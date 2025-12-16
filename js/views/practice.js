@@ -1,0 +1,364 @@
+/**
+ * Practice View Module
+ * 練功房視圖 - 互動式算盤練習
+ * 
+ * @module views/practice
+ */
+
+import AppState from '../core/state.js';
+import AudioManager from '../core/audio.js';
+import Abacus from '../components/abacus.js';
+import { generateProblem, sleep } from '../core/utils.js';
+
+let abacusInstance = null;
+let practiceState = {
+    mode: 'free',        // 'free' | 'guided' | 'challenge'
+    currentProblem: null,
+    targetValue: 0,
+    score: 0,
+    streak: 0,
+    timer: null,
+    timeLeft: 0,
+};
+
+/**
+ * 渲染練功房頁面
+ * @returns {string} HTML 字串
+ */
+export function render() {
+    return `
+        <div class="view practice-view">
+            <!-- 模式選擇 -->
+            <section class="practice-modes glass-panel">
+                <h3>🧮 練功房</h3>
+                <div class="mode-cards">
+                    <div class="mode-card ${practiceState.mode === 'free' ? 'active' : ''}" 
+                         onclick="window.setPracticeMode('free')">
+                        <div class="mode-icon">🎮</div>
+                        <h4>自由練習</h4>
+                        <p>隨意撥動算珠，熟悉操作</p>
+                    </div>
+                    <div class="mode-card ${practiceState.mode === 'guided' ? 'active' : ''}" 
+                         onclick="window.setPracticeMode('guided')">
+                        <div class="mode-icon">📚</div>
+                        <h4>指導模式</h4>
+                        <p>系統給數字，你來撥珠</p>
+                    </div>
+                    <div class="mode-card ${practiceState.mode === 'challenge' ? 'active' : ''}" 
+                         onclick="window.setPracticeMode('challenge')">
+                        <div class="mode-icon">⏱️</div>
+                        <h4>計時挑戰</h4>
+                        <p>限時內完成越多題越好</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 練習區域 -->
+            <section class="practice-area glass-panel">
+                <!-- 目標顯示 (指導/挑戰模式) -->
+                <div class="target-display" id="target-display" style="display: none;">
+                    <span class="target-label">請撥出：</span>
+                    <span class="target-value" id="target-value">0</span>
+                </div>
+                
+                <!-- 計時器 (挑戰模式) -->
+                <div class="timer-display" id="timer-display" style="display: none;">
+                    <span class="timer-icon">⏱️</span>
+                    <span class="timer-value" id="timer-value">60</span>
+                    <span class="timer-unit">秒</span>
+                </div>
+                
+                <!-- 互動算盤 -->
+                <div id="practice-abacus-container" class="abacus-container large"></div>
+                
+                <!-- 控制按鈕 -->
+                <div class="practice-controls">
+                    <button class="btn btn-secondary" onclick="window.resetPracticeAbacus()">
+                        🔄 歸零
+                    </button>
+                    <button class="btn btn-primary" id="check-btn" style="display: none;" 
+                            onclick="window.checkPracticeAnswer()">
+                        ✅ 確認
+                    </button>
+                    <button class="btn btn-primary" id="start-challenge-btn" style="display: none;" 
+                            onclick="window.startChallenge()">
+                        ▶️ 開始挑戰
+                    </button>
+                </div>
+            </section>
+            
+            <!-- 統計/成績 -->
+            <section class="practice-stats glass-panel">
+                <div class="stat-item">
+                    <span class="stat-label">連續正確</span>
+                    <span class="stat-value" id="practice-streak">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">本次得分</span>
+                    <span class="stat-value" id="practice-score">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">獲得經驗</span>
+                    <span class="stat-value xp-value" id="practice-xp">+0 XP</span>
+                </div>
+            </section>
+        </div>
+    `;
+}
+
+/**
+ * 設定練習模式
+ */
+function setPracticeMode(mode) {
+    practiceState.mode = mode;
+    practiceState.score = 0;
+    practiceState.streak = 0;
+    
+    // 更新 UI
+    document.querySelectorAll('.mode-card').forEach(card => {
+        card.classList.toggle('active', card.querySelector('h4').textContent.includes(getModeLabel(mode)));
+    });
+    
+    const targetDisplay = document.getElementById('target-display');
+    const timerDisplay = document.getElementById('timer-display');
+    const checkBtn = document.getElementById('check-btn');
+    const startChallengeBtn = document.getElementById('start-challenge-btn');
+    
+    // 停止計時器
+    if (practiceState.timer) {
+        clearInterval(practiceState.timer);
+        practiceState.timer = null;
+    }
+    
+    switch (mode) {
+        case 'free':
+            targetDisplay.style.display = 'none';
+            timerDisplay.style.display = 'none';
+            checkBtn.style.display = 'none';
+            startChallengeBtn.style.display = 'none';
+            break;
+        case 'guided':
+            targetDisplay.style.display = 'flex';
+            timerDisplay.style.display = 'none';
+            checkBtn.style.display = 'inline-flex';
+            startChallengeBtn.style.display = 'none';
+            generateNewTarget();
+            break;
+        case 'challenge':
+            targetDisplay.style.display = 'none';
+            timerDisplay.style.display = 'flex';
+            checkBtn.style.display = 'none';
+            startChallengeBtn.style.display = 'inline-flex';
+            document.getElementById('timer-value').textContent = '60';
+            break;
+    }
+    
+    if (abacusInstance) {
+        abacusInstance.reset();
+    }
+    
+    updateStats();
+}
+
+function getModeLabel(mode) {
+    return { 'free': '自由', 'guided': '指導', 'challenge': '計時' }[mode] || '';
+}
+
+/**
+ * 產生新目標數字
+ */
+function generateNewTarget() {
+    const max = abacusInstance ? Math.pow(10, abacusInstance.columns) - 1 : 99999;
+    practiceState.targetValue = Math.floor(Math.random() * Math.min(max, 100));
+    document.getElementById('target-value').textContent = practiceState.targetValue;
+}
+
+/**
+ * 檢查答案
+ */
+function checkPracticeAnswer() {
+    if (!abacusInstance) return;
+    
+    const userValue = abacusInstance.getValue();
+    const isCorrect = userValue === practiceState.targetValue;
+    
+    if (isCorrect) {
+        practiceState.streak++;
+        practiceState.score += 10 + practiceState.streak * 2;
+        AudioManager.play('correct');
+        
+        // 加經驗值
+        const xp = 5 + Math.min(practiceState.streak, 10);
+        addXP(xp);
+        
+        // 下一題
+        generateNewTarget();
+        abacusInstance.reset();
+    } else {
+        practiceState.streak = 0;
+        AudioManager.play('wrong');
+        
+        // 顯示提示
+        showHint(`正確答案是 ${practiceState.targetValue}，你撥的是 ${userValue}`);
+    }
+    
+    updateStats();
+}
+
+/**
+ * 開始挑戰模式
+ */
+function startChallenge() {
+    practiceState.timeLeft = 60;
+    practiceState.score = 0;
+    practiceState.streak = 0;
+    
+    document.getElementById('start-challenge-btn').style.display = 'none';
+    document.getElementById('check-btn').style.display = 'inline-flex';
+    document.getElementById('target-display').style.display = 'flex';
+    
+    generateNewTarget();
+    abacusInstance.reset();
+    
+    // 開始計時
+    practiceState.timer = setInterval(() => {
+        practiceState.timeLeft--;
+        document.getElementById('timer-value').textContent = practiceState.timeLeft;
+        
+        if (practiceState.timeLeft <= 0) {
+            endChallenge();
+        }
+    }, 1000);
+}
+
+/**
+ * 結束挑戰
+ */
+function endChallenge() {
+    clearInterval(practiceState.timer);
+    practiceState.timer = null;
+    
+    document.getElementById('check-btn').style.display = 'none';
+    document.getElementById('start-challenge-btn').style.display = 'inline-flex';
+    document.getElementById('target-display').style.display = 'none';
+    
+    // 計算獎勵
+    const bonusXP = Math.floor(practiceState.score / 2);
+    addXP(bonusXP);
+    
+    alert(`⏱️ 時間到！\n\n得分：${practiceState.score}\n獲得經驗：+${bonusXP} XP`);
+}
+
+/**
+ * 顯示提示
+ */
+function showHint(message) {
+    // 簡單的 toast 提示
+    const toast = document.createElement('div');
+    toast.className = 'toast-hint';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.remove(), 2000);
+}
+
+/**
+ * 加經驗值
+ */
+function addXP(amount) {
+    const currentXP = AppState.get('user.xp');
+    const xpToNext = AppState.get('user.xpToNextLevel');
+    const newXP = currentXP + amount;
+    
+    if (newXP >= xpToNext) {
+        const currentLevel = AppState.get('user.level');
+        AppState.batchUpdate({
+            'user.level': currentLevel + 1,
+            'user.xp': newXP - xpToNext,
+            'user.xpToNextLevel': Math.floor(xpToNext * 1.5),
+        });
+        AudioManager.play('levelUp');
+    } else {
+        AppState.set('user.xp', newXP);
+    }
+}
+
+/**
+ * 更新統計顯示
+ */
+function updateStats() {
+    document.getElementById('practice-streak').textContent = practiceState.streak;
+    document.getElementById('practice-score').textContent = practiceState.score;
+    
+    const totalXP = AppState.get('user.xp');
+    document.getElementById('practice-xp').textContent = `${totalXP} XP`;
+}
+
+/**
+ * 頁面進入時初始化
+ */
+export function onEnter() {
+    practiceState = {
+        mode: 'free',
+        currentProblem: null,
+        targetValue: 0,
+        score: 0,
+        streak: 0,
+        timer: null,
+        timeLeft: 0,
+    };
+    
+    // 延遲初始化算盤
+    setTimeout(() => {
+        const container = document.getElementById('practice-abacus-container');
+        if (container && !abacusInstance) {
+            abacusInstance = new Abacus({
+                container,
+                columns: 5,
+                interactive: true,
+                showValue: true,
+                onChange: (value) => {
+                    // 挑戰模式下自動檢查
+                    if (practiceState.mode === 'challenge' && practiceState.timer) {
+                        if (value === practiceState.targetValue) {
+                            practiceState.streak++;
+                            practiceState.score += 10 + practiceState.streak * 2;
+                            AudioManager.play('correct');
+                            addXP(5);
+                            generateNewTarget();
+                            abacusInstance.reset();
+                            updateStats();
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 綁定全域函數
+        window.setPracticeMode = setPracticeMode;
+        window.resetPracticeAbacus = () => abacusInstance && abacusInstance.reset();
+        window.checkPracticeAnswer = checkPracticeAnswer;
+        window.startChallenge = startChallenge;
+        
+        updateStats();
+    }, 50);
+}
+
+/**
+ * 離開時清理
+ */
+export function onLeave() {
+    if (practiceState.timer) {
+        clearInterval(practiceState.timer);
+    }
+    if (abacusInstance) {
+        abacusInstance.destroy();
+        abacusInstance = null;
+    }
+}
+
+export default {
+    render,
+    onEnter,
+    onLeave,
+};

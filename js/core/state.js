@@ -1,0 +1,242 @@
+/**
+ * State Management Module
+ * 全域狀態管理器 - 使用 Pub/Sub 模式實現響應式狀態
+ * 
+ * @module core/state
+ */
+
+const AppState = (() => {
+    // Private state
+    const state = {
+        // 當前視圖/路由
+        currentView: 'home',
+        
+        // 使用者資料
+        user: {
+            name: '小珠算師',
+            level: 1,
+            xp: 0,
+            xpToNextLevel: 100,
+            avatar: '🧒',
+            streak: 0,
+            lastPracticeDate: null,
+        },
+        
+        // 算盤狀態
+        abacus: {
+            columns: 5,          // 算盤位數
+            values: [0, 0, 0, 0, 0], // 每位的值 (0-9)
+            isInteractive: true,
+        },
+        
+        // 訓練設定
+        training: {
+            mode: 'flash',       // 'flash' | 'audio' | 'practice'
+            digits: 1,           // 位數
+            rows: 3,             // 口數
+            speed: 1000,         // 閃爍速度 (ms)
+            isRunning: false,
+            currentProblem: null,
+            score: 0,
+        },
+        
+        // 學習單設定 (Legacy)
+        worksheet: {
+            mode: 'calc',        // 'read' | 'draw' | 'friends' | 'calc'
+            rangeType: '0-9',
+            friendType: '5',
+            friendRows: 2,
+            friendGroups: 2,     // 湊數練習組數 (2-4)
+            calcRows: 3,
+            calcDigits: 1,
+            calcBlocks: 4,
+            showAnswer: false,
+            data: [],
+        },
+        
+        // UI 狀態
+        ui: {
+            theme: 'light',      // 'light' | 'dark' | 'neon'
+            soundEnabled: true,
+            showTutorial: true,
+            sidebarOpen: false,
+        },
+    };
+    
+    // Subscribers (觀察者)
+    const subscribers = new Map();
+    
+    /**
+     * 訂閱狀態變更
+     * @param {string} path - 狀態路徑 (e.g., 'user.xp', 'training.mode')
+     * @param {Function} callback - 變更時呼叫的函數
+     * @returns {Function} 取消訂閱的函數
+     */
+    function subscribe(path, callback) {
+        if (!subscribers.has(path)) {
+            subscribers.set(path, new Set());
+        }
+        subscribers.get(path).add(callback);
+        
+        // 返回取消訂閱函數
+        return () => {
+            subscribers.get(path).delete(callback);
+        };
+    }
+    
+    /**
+     * 通知訂閱者
+     * @param {string} path - 變更的路徑
+     * @param {*} newValue - 新值
+     * @param {*} oldValue - 舊值
+     */
+    function notify(path, newValue, oldValue) {
+        // 通知精確路徑的訂閱者
+        if (subscribers.has(path)) {
+            subscribers.get(path).forEach(cb => cb(newValue, oldValue, path));
+        }
+        
+        // 通知父路徑的訂閱者 (e.g., 'user' 會被通知 'user.xp' 的變更)
+        const parts = path.split('.');
+        while (parts.length > 1) {
+            parts.pop();
+            const parentPath = parts.join('.');
+            if (subscribers.has(parentPath)) {
+                subscribers.get(parentPath).forEach(cb => cb(get(parentPath), null, path));
+            }
+        }
+        
+        // 通知全域訂閱者
+        if (subscribers.has('*')) {
+            subscribers.get('*').forEach(cb => cb(state, path));
+        }
+    }
+    
+    /**
+     * 取得狀態值
+     * @param {string} path - 狀態路徑
+     * @returns {*} 狀態值
+     */
+    function get(path) {
+        if (!path) return state;
+        
+        const keys = path.split('.');
+        let current = state;
+        
+        for (const key of keys) {
+            if (current === undefined || current === null) return undefined;
+            current = current[key];
+        }
+        
+        return current;
+    }
+    
+    /**
+     * 設置狀態值
+     * @param {string} path - 狀態路徑
+     * @param {*} value - 新值
+     */
+    function set(path, value) {
+        const keys = path.split('.');
+        const lastKey = keys.pop();
+        let current = state;
+        
+        for (const key of keys) {
+            if (current[key] === undefined) {
+                current[key] = {};
+            }
+            current = current[key];
+        }
+        
+        const oldValue = current[lastKey];
+        
+        // 如果值沒變，不觸發更新
+        if (oldValue === value) return;
+        
+        current[lastKey] = value;
+        notify(path, value, oldValue);
+        
+        // 自動持久化到 localStorage
+        saveToStorage();
+    }
+    
+    /**
+     * 批次更新狀態 (避免多次存儲)
+     * @param {Object} updates - { path: value, ... }
+     */
+    function batchUpdate(updates) {
+        for (const [path, value] of Object.entries(updates)) {
+            const keys = path.split('.');
+            const lastKey = keys.pop();
+            let current = state;
+            
+            for (const key of keys) {
+                if (current[key] === undefined) current[key] = {};
+                current = current[key];
+            }
+            
+            const oldValue = current[lastKey];
+            current[lastKey] = value;
+            notify(path, value, oldValue);
+        }
+        saveToStorage();
+    }
+    
+    /**
+     * 儲存到 localStorage
+     */
+    function saveToStorage() {
+        try {
+            const dataToSave = {
+                user: state.user,
+                ui: state.ui,
+                worksheet: state.worksheet,
+            };
+            localStorage.setItem('abacus_academy_state', JSON.stringify(dataToSave));
+        } catch (e) {
+            console.warn('無法儲存狀態到 localStorage:', e);
+        }
+    }
+    
+    /**
+     * 從 localStorage 載入
+     */
+    function loadFromStorage() {
+        try {
+            const saved = localStorage.getItem('abacus_academy_state');
+            if (saved) {
+                const data = JSON.parse(saved);
+                if (data.user) Object.assign(state.user, data.user);
+                if (data.ui) Object.assign(state.ui, data.ui);
+                if (data.worksheet) Object.assign(state.worksheet, data.worksheet);
+            }
+        } catch (e) {
+            console.warn('無法從 localStorage 載入狀態:', e);
+        }
+    }
+    
+    /**
+     * 重置狀態
+     */
+    function reset() {
+        localStorage.removeItem('abacus_academy_state');
+        location.reload();
+    }
+    
+    // 初始化時載入
+    loadFromStorage();
+    
+    // Public API
+    return {
+        get,
+        set,
+        batchUpdate,
+        subscribe,
+        reset,
+        // Debug 用
+        _getState: () => ({ ...state }),
+    };
+})();
+
+// 匯出
+export default AppState;
