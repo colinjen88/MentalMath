@@ -15,8 +15,18 @@ let abacusInstance = null;
  * 渲染首頁
  * @returns {string} HTML 字串
  */
+const QUOTES = [
+    "「珠算式心算」被譽為世界上最好的腦力開發工具。",
+    "心算就像大腦的體操，每天都要動一動！",
+    "專注力是珠心算這門課送給孩子最好的禮物。",
+    "眼明手快，心手合一。",
+    "練習珠心算，不只是為了算得快，更是為了讓大腦更靈活。",
+    "每日累積一點點，進步看得見。",
+];
+
 export function render() {
     const user = AppState.get('user');
+    const randomQuote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
     
     return `
         <div class="view home-view">
@@ -29,6 +39,9 @@ export function render() {
                             ? `🔥 連續練習 <strong>${user.streak}</strong> 天！繼續保持！` 
                             : '✨ 今天開始新的練習吧！'}
                     </p>
+                    <div class="daily-quote">
+                        <blockquote>${randomQuote}</blockquote>
+                    </div>
                 </div>
                 <div class="daily-mission">
                     <h3>📋 每日任務</h3>
@@ -90,7 +103,7 @@ export function render() {
                         <p>產生紙本練習題</p>
                     </div>
                 </div>
-                <div class="action-card" onclick="window.navigateTo('profile')">
+                <div class="action-card" onclick="window.navigateTo('leaderboard')">
                     <div class="action-icon">📊</div>
                     <div class="action-info">
                         <h4>學習報告</h4>
@@ -102,9 +115,6 @@ export function render() {
     `;
 }
 
-/**
- * 進入首頁時的初始化
- */
 export function onEnter() {
     // 延遲執行，確保 DOM 已渲染
     setTimeout(() => {
@@ -116,7 +126,9 @@ export function onEnter() {
                 interactive: true,
                 showValue: true,
                 onChange: (value) => {
-                    console.log('Abacus value:', value);
+                    if (window.navigator && window.navigator.vibrate) {
+                         window.navigator.vibrate(5);
+                    }
                 }
             });
         }

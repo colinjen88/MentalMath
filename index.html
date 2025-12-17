@@ -139,9 +139,25 @@
         }
     </style>
 
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json">
+
     <!-- Main Application Script -->
     <script type="module">
         import './js/app.js';
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
 
         // Hide loading screen after app is ready
         window.addEventListener('load', () => {

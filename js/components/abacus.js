@@ -377,11 +377,20 @@ class Abacus {
             this.updateColumnBeads(col);
             this.updateValueDisplay();
             
-            // 播放音效
-            AudioManager.playBeadSound();
+            // 觸覺回饋 (Haptic Feedback)
+            if ('vibrate' in navigator) {
+                navigator.vibrate(10); // 輕微震動 10ms
+            }
             
-            // 觸發回調
-            this.onChange(this.getValue(), this.values);
+            // 播放音效 - 使用專用方法
+            if (AudioManager) {
+                AudioManager.playBeadSound();
+            }
+            
+            // 觸發變更事件
+            if (this.onChange) {
+                this.onChange(this.getValue());
+            }
         }
     }
     
