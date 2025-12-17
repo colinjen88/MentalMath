@@ -235,8 +235,17 @@ function renderErrorAnalysis() {
 export function onEnter() {
     // 綁定全域函數
     window.practiceErrors = () => {
-        // TODO: 導航到錯題練習
-        alert('錯題重練功能即將推出！');
+        const errorTracking = AppState.get('errorTracking');
+        if (!errorTracking.errors || errorTracking.errors.length === 0) {
+            alert('目前沒有錯題記錄喔！');
+            return;
+        }
+        
+        // 設定練功房模式為錯題複習
+        AppState.set('training.mode', 'review');
+        
+        // 導航到練功房
+        location.hash = 'practice';
     };
 }
 

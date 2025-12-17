@@ -1186,9 +1186,16 @@ h4 { font-size: 1.125rem; }
 }
 
 .audio-status {
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: 2.5rem;
+    font-weight: 700;
     color: var(--color-accent);
+    min-height: 3.5rem;
+    transition: all 0.2s;
+}
+
+.audio-status.pulse {
+    transform: scale(1.2);
+    color: var(--color-primary);
 }
 
 .audio-progress {
@@ -1395,6 +1402,68 @@ h4 { font-size: 1.125rem; }
     font-family: var(--font-mono);
     font-weight: 700;
     color: var(--color-accent);
+}
+
+/* ===================================
+   Review Mode & Flash Optimization
+   =================================== */
+.mode-tag {
+    font-size: 0.8em;
+    padding: 2px 8px;
+    background: var(--color-danger);
+    color: white;
+    border-radius: var(--radius-sm);
+    vertical-align: middle;
+    margin-left: var(--spacing-sm);
+}
+
+.review-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-lg);
+    margin-top: var(--spacing-md);
+}
+
+.review-status {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+#review-progress {
+    color: var(--color-accent);
+}
+
+.problem-display {
+    text-align: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.review-problem {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.review-hint {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+/* Flash Number Scaling */
+.flash-number[data-digits="1"] { font-size: 8rem; }
+.flash-number[data-digits="2"] { font-size: 7rem; }
+.flash-number[data-digits="3"] { font-size: 6rem; }
+.flash-number[data-digits="4"] { font-size: 5rem; }
+
+@media (max-width: 768px) {
+    .flash-number[data-digits="1"] { font-size: 6rem; }
+    .flash-number[data-digits="2"] { font-size: 5rem; }
+    .flash-number[data-digits="3"] { font-size: 4rem; }
+    .flash-number[data-digits="4"] { font-size: 3rem; }
 }
 
 /* ===================================

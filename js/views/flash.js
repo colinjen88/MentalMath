@@ -195,6 +195,7 @@ async function startFlash() {
         
         // 顯示數字
         numberEl.textContent = nums[i] >= 0 ? nums[i] : nums[i];
+        numberEl.setAttribute('data-digits', digits); // 設定位數以調整字體大小
         numberEl.classList.add('flash-active');
         
         // 播放音效

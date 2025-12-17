@@ -257,13 +257,17 @@ async function speakProblem() {
         if (i > 0) {
             const opText = num >= 0 ? op.plus : op.minus;
             statusEl.textContent = `${opText}...`;
+            statusEl.classList.add('pulse');
             await speakText(opText, lang, speed);
+            statusEl.classList.remove('pulse');
             await sleep(interval * 0.3);
         }
         
         // 朗讀數字
         statusEl.textContent = `${Math.abs(num)}`;
+        statusEl.classList.add('pulse');
         await speakText(String(Math.abs(num)), lang, speed);
+        statusEl.classList.remove('pulse');
         
         // 使用設定的間隔時間
         await sleep(interval);

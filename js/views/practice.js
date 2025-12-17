@@ -17,21 +17,20 @@ let practiceState = {
     targetValue: 0,
     score: 0,
     streak: 0,
+// ... (在 practiceState 中增加 review 相關屬性)
     timer: null,
     timeLeft: 0,
+    reviewIndex: 0,
+    reviewErrors: [],
 };
 
-/**
- * 渲染練功房頁面
- * @returns {string} HTML 字串
- */
 export function render() {
     return `
         <div class="view practice-view">
             <!-- 模式選擇 -->
             <section class="practice-modes glass-panel">
-                <h3>🧮 練功房</h3>
-                <div class="mode-cards">
+                <h3>🧮 練功房 ${practiceState.mode === 'review' ? '<span class="mode-tag">錯題特訓</span>' : ''}</h3>
+                <div class="mode-cards" ${practiceState.mode === 'review' ? 'style="display:none"' : ''}>
                     <div class="mode-card ${practiceState.mode === 'free' ? 'active' : ''}" 
                          onclick="window.setPracticeMode('free')">
                         <div class="mode-icon">🎮</div>
@@ -51,14 +50,25 @@ export function render() {
                         <p>限時內完成越多題越好</p>
                     </div>
                 </div>
+                
+                <!-- 錯題複習控制列 -->
+                <div class="review-controls" ${practiceState.mode === 'review' ? '' : 'style="display:none"'}>
+                    <div class="review-status">
+                        正在複習錯題：<span id="review-progress">1 / 10</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="window.exitReviewMode()">
+                        🚪 退出特訓
+                    </button>
+                </div>
             </section>
             
             <!-- 練習區域 -->
             <section class="practice-area glass-panel">
-                <!-- 目標顯示 (指導/挑戰模式) -->
+                <!-- 目標顯示 -->
                 <div class="target-display" id="target-display" style="display: none;">
-                    <span class="target-label">請撥出：</span>
-                    <span class="target-value" id="target-value">0</span>
+                    <div class="problem-display" id="problem-display"></div>
+                    <span class="target-label">目標答案：</span>
+                    <span class="target-value" id="target-value">?</span>
                 </div>
                 
                 <!-- 計時器 (挑戰模式) -->
@@ -106,15 +116,12 @@ export function render() {
     `;
 }
 
-/**
- * 設定練習模式
- */
 function setPracticeMode(mode) {
     practiceState.mode = mode;
     practiceState.score = 0;
     practiceState.streak = 0;
     
-    // 更新 UI
+    // 更新 UI ... (略去部分未變更代碼)
     document.querySelectorAll('.mode-card').forEach(card => {
         card.classList.toggle('active', card.querySelector('h4').textContent.includes(getModeLabel(mode)));
     });
@@ -123,8 +130,8 @@ function setPracticeMode(mode) {
     const timerDisplay = document.getElementById('timer-display');
     const checkBtn = document.getElementById('check-btn');
     const startChallengeBtn = document.getElementById('start-challenge-btn');
+    const problemDisplay = document.getElementById('problem-display');
     
-    // 停止計時器
     if (practiceState.timer) {
         clearInterval(practiceState.timer);
         practiceState.timer = null;
@@ -139,6 +146,8 @@ function setPracticeMode(mode) {
             break;
         case 'guided':
             targetDisplay.style.display = 'flex';
+            problemDisplay.style.display = 'none';
+            document.getElementById('target-value').textContent = practiceState.targetValue;
             timerDisplay.style.display = 'none';
             checkBtn.style.display = 'inline-flex';
             startChallengeBtn.style.display = 'none';
@@ -151,31 +160,54 @@ function setPracticeMode(mode) {
             startChallengeBtn.style.display = 'inline-flex';
             document.getElementById('timer-value').textContent = '60';
             break;
+        case 'review':
+            targetDisplay.style.display = 'flex';
+            problemDisplay.style.display = 'block';
+            timerDisplay.style.display = 'none';
+            checkBtn.style.display = 'inline-flex';
+            startChallengeBtn.style.display = 'none';
+            generateNewTarget();
+            break;
     }
     
-    if (abacusInstance) {
-        abacusInstance.reset();
-    }
-    
+    if (abacusInstance) abacusInstance.reset();
     updateStats();
 }
 
-function getModeLabel(mode) {
-    return { 'free': '自由', 'guided': '指導', 'challenge': '計時' }[mode] || '';
-}
-
-/**
- * 產生新目標數字
- */
 function generateNewTarget() {
-    const max = abacusInstance ? Math.pow(10, abacusInstance.columns) - 1 : 99999;
-    practiceState.targetValue = Math.floor(Math.random() * Math.min(max, 100));
-    document.getElementById('target-value').textContent = practiceState.targetValue;
+    if (practiceState.mode === 'review') {
+        if (practiceState.reviewErrors.length === 0) {
+            alert('恭喜！錯題複習完成！');
+            window.exitReviewMode();
+            return;
+        }
+        
+        // 取出一題
+        const problem = practiceState.reviewErrors[practiceState.reviewIndex];
+        practiceState.currentProblem = problem;
+        practiceState.targetValue = problem.correctAnswer;
+        
+        // 顯示題目
+        document.getElementById('problem-display').innerHTML = `
+            <div class="review-problem">
+                ${problem.problem.join(' + ')} = ?
+            </div>
+            <div class="review-hint">上次回答: ${problem.userAnswer}</div>
+        `;
+        document.getElementById('target-value').textContent = '?';
+        
+        // 更新進度
+        document.getElementById('review-progress').textContent = 
+            `${practiceState.reviewIndex + 1} / ${practiceState.reviewErrors.length}`;
+            
+    } else {
+        const max = abacusInstance ? Math.pow(10, abacusInstance.columns) - 1 : 99999;
+        practiceState.targetValue = Math.floor(Math.random() * Math.min(max, 100));
+        document.getElementById('target-value').textContent = practiceState.targetValue;
+        document.getElementById('problem-display').innerHTML = '';
+    }
 }
 
-/**
- * 檢查答案
- */
 function checkPracticeAnswer() {
     if (!abacusInstance) return;
     
@@ -186,20 +218,35 @@ function checkPracticeAnswer() {
         practiceState.streak++;
         practiceState.score += 10 + practiceState.streak * 2;
         AudioManager.play('correct');
-        
-        // 加經驗值
         const xp = 5 + Math.min(practiceState.streak, 10);
         addXP(xp);
         
-        // 下一題
+        if (practiceState.mode === 'review') {
+            // 從錯題列表中移除已解決的題目 (或只是移動索引)
+            practiceState.reviewIndex++;
+            if (practiceState.reviewIndex >= practiceState.reviewErrors.length) {
+                alert(`太棒了！你解決了所有的錯題！\n獲得經驗：+${practiceState.score} XP`);
+                addXP(practiceState.score); // 額外獎勵
+                
+                // 清空錯題記錄 (可選)
+                if (confirm('是否清除已解決的錯題記錄？')) {
+                     AppState.set('errorTracking.errors', []);
+                }
+                
+                window.exitReviewMode();
+                return;
+            }
+        }
+        
         generateNewTarget();
         abacusInstance.reset();
     } else {
         practiceState.streak = 0;
         AudioManager.play('wrong');
-        
-        // 顯示提示
-        showHint(`正確答案是 ${practiceState.targetValue}，你撥的是 ${userValue}`);
+        const hint = practiceState.mode === 'review' 
+            ? `正確答案是 ${practiceState.targetValue}`
+            : `正確答案是 ${practiceState.targetValue}，你撥的是 ${userValue}`;
+        showHint(hint);
     }
     
     updateStats();
@@ -298,27 +345,44 @@ function updateStats() {
  * 頁面進入時初始化
  */
 export function onEnter() {
+    // 檢查是否有傳入的模式 (從排行榜跳轉過來)
+    const initialMode = AppState.get('training.mode') === 'review' ? 'review' : 'free';
+    
     practiceState = {
-        mode: 'free',
+        mode: initialMode,
         currentProblem: null,
         targetValue: 0,
         score: 0,
         streak: 0,
         timer: null,
         timeLeft: 0,
+        reviewIndex: 0,
+        reviewErrors: [],
     };
+    
+    // 如果是複習模式，載入錯題
+    if (initialMode === 'review') {
+        const errorTracking = AppState.get('errorTracking');
+        // 深拷貝，因為我們要打亂順序 (在這個版本我們先不打亂，按時間倒序)
+        practiceState.reviewErrors = JSON.parse(JSON.stringify(errorTracking.errors || []));
+    }
+    
+    // 重置全局狀態的 mode，以免下次進來還是 review
+    AppState.set('training.mode', 'practice');
     
     // 延遲初始化算盤
     setTimeout(() => {
         const container = document.getElementById('practice-abacus-container');
         if (container && !abacusInstance) {
+            // ... (同原有邏輯)
             abacusInstance = new Abacus({
                 container,
                 columns: 5,
                 interactive: true,
                 showValue: true,
                 onChange: (value) => {
-                    // 挑戰模式下自動檢查
+                    // 挑戰模式 或 錯題模式(可選) 下自動檢查
+                    // 這裡我們保持錯題模式需要按確認鍵，以免誤觸
                     if (practiceState.mode === 'challenge' && practiceState.timer) {
                         if (value === practiceState.targetValue) {
                             practiceState.streak++;
@@ -339,6 +403,10 @@ export function onEnter() {
         window.resetPracticeAbacus = () => abacusInstance && abacusInstance.reset();
         window.checkPracticeAnswer = checkPracticeAnswer;
         window.startChallenge = startChallenge;
+        window.exitReviewMode = () => window.setPracticeMode('free');
+        
+        // 根據模式設定初始狀態
+        setPracticeMode(initialMode);
         
         updateStats();
     }, 50);
