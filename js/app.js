@@ -43,6 +43,25 @@ function initApp() {
     AppState.subscribe('user', () => updateHeader());
     AppState.subscribe('currentView', () => updateHeader());
     
+    // PWA 安裝提示監聽
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.deferredPrompt = e;
+        AppState.set('ui.canInstall', true);
+        console.log('📱 PWA 安裝準備就緒');
+    });
+
+    window.installPWA = async () => {
+        if (!window.deferredPrompt) return;
+        window.deferredPrompt.prompt();
+        const { outcome } = await window.deferredPrompt.userChoice;
+        console.log(`📱 使用者${outcome === 'accepted' ? '接受' : '拒絕'}了安裝`);
+        if (outcome === 'accepted') {
+            AppState.set('ui.canInstall', false);
+        }
+        window.deferredPrompt = null;
+    };
+
     console.log('✅ 珠心算學院啟動完成！');
 }
 

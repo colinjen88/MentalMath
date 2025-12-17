@@ -39,6 +39,13 @@ export function render() {
                             ? `🔥 連續練習 <strong>${user.streak}</strong> 天！繼續保持！` 
                             : '✨ 今天開始新的練習吧！'}
                     </p>
+                    ${AppState.get('ui.canInstall') ? `
+                    <div class="install-prompt" style="margin-top: 1rem;">
+                        <button class="btn btn-primary" onclick="window.installPWA()" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #10b981, #059669);">
+                            📱 安裝 App 到主畫面
+                        </button>
+                    </div>
+                    ` : ''}
                     <div class="daily-quote">
                         <blockquote>${randomQuote}</blockquote>
                     </div>

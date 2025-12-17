@@ -5,7 +5,7 @@
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#6366f1",
-  "description": "全方位互動式珠心算學習平台",
+  "description": "免費的線上珠心算學習平台，提供閃電心算、聽算與學習單列印。",
   "icons": [
     {
       "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>",

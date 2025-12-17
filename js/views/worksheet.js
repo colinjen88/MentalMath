@@ -11,6 +11,11 @@ import { generateProblem, generateFriendProblem, randomInt } from '../core/utils
 // 模組層級變數：當前題目資料 (避免切換答案時重新生成)
 let currentWorksheetData = null;
 
+// 初始化題號格式預設值
+if (!AppState.get('worksheet.labelType')) {
+    AppState.set('worksheet.labelType', '1-10-repeat');
+}
+
 /**
  * 渲染學習單頁面
  * @returns {string} HTML 字串
@@ -47,6 +52,18 @@ export function render() {
                             onclick="window.changeWorksheetMode('calc')">
                         🔢 直式心算
                     </button>
+                </div>
+
+                <!-- 通用設定 -->
+                <div class="common-settings">
+                    <label>題號格式：</label>
+                    <select onchange="window.updateWorksheetSetting('labelType', this.value)">
+                        <option value="1-10-repeat" ${settings.labelType === '1-10-repeat' ? 'selected' : ''}>1~10 重複 (適合直式)</option>
+                        <option value="A-J-repeat" ${settings.labelType === 'A-J-repeat' ? 'selected' : ''}>A~J 重複 (適合直式)</option>
+                        <option value="1-continuous" ${settings.labelType === '1-continuous' ? 'selected' : ''}>1, 2, 3... 連續</option>
+                        <option value="A-continuous" ${settings.labelType === 'A-continuous' ? 'selected' : ''}>A, B...AA... 連續</option>
+                        <option value="none" ${settings.labelType === 'none' ? 'selected' : ''}>不顯示題號</option>
+                    </select>
                 </div>
                 
                 <!-- 動態設定 -->
@@ -158,7 +175,7 @@ function renderSettingsForMode(mode, settings) {
  * @param {Array} data - 題目資料 (從外部傳入，避免重複生成)
  */
 function renderWorksheetContent(settings, data) {
-    const { mode, showAnswer } = settings;
+    const { mode, showAnswer, labelType } = settings;
     
     let title = '';
     let subtitle = '';
@@ -200,7 +217,7 @@ function renderWorksheetContent(settings, data) {
         
         <!-- 內容區 -->
         <div class="worksheet-content">
-            ${renderContentByMode(mode, data, settings, showAnswer)}
+            ${renderContentByMode(mode, data, settings, showAnswer, labelType)}
         </div>
         
         <!-- 頁尾 -->
@@ -251,16 +268,16 @@ function generateWorksheetData(settings) {
 /**
  * 根據模式渲染內容
  */
-function renderContentByMode(mode, data, settings, showAnswer) {
+function renderContentByMode(mode, data, settings, showAnswer, labelType) {
     switch (mode) {
         case 'read':
-            return renderReadMode(data, showAnswer);
+            return renderReadMode(data, showAnswer, labelType);
         case 'draw':
-            return renderDrawMode(data, settings.rangeType, showAnswer);
+            return renderDrawMode(data, settings.rangeType, showAnswer, labelType);
         case 'friends':
-            return renderFriendsMode(data, settings.friendGroups || 2, showAnswer);
+            return renderFriendsMode(data, settings.friendGroups || 2, showAnswer, labelType);
         case 'calc':
-            return renderCalcMode(data, settings.calcBlocks, showAnswer);
+            return renderCalcMode(data, settings.calcBlocks, showAnswer, labelType);
         default:
             return '';
     }
@@ -270,11 +287,12 @@ function renderContentByMode(mode, data, settings, showAnswer) {
 /**
  * 看珠寫數模式
  */
-function renderReadMode(data, showAnswer) {
+function renderReadMode(data, showAnswer, labelType) {
     return `
         <div class="grid grid-5">
-            ${data.map(num => `
+            ${data.map((num, i) => `
                 <div class="abacus-card">
+                    ${renderLabel(i, labelType)}
                     ${renderStaticAbacus(num)}
                     <div class="answer-box ${showAnswer ? 'show' : ''}">${showAnswer ? num : ''}</div>
                 </div>
@@ -286,11 +304,12 @@ function renderReadMode(data, showAnswer) {
 /**
  * 看數畫珠模式
  */
-function renderDrawMode(data, rangeType, showAnswer) {
+function renderDrawMode(data, rangeType, showAnswer, labelType) {
     return `
         <div class="grid grid-5">
-            ${data.map(num => `
+            ${data.map((num, i) => `
                 <div class="abacus-card">
+                    ${renderLabel(i, labelType)}
                     <div class="number-display">${num}</div>
                     ${showAnswer ? renderStaticAbacus(num) : renderEmptyAbacus(rangeType === '10-99')}
                 </div>
@@ -305,7 +324,7 @@ function renderDrawMode(data, rangeType, showAnswer) {
  * @param {number} groups - 組數 (2-4)
  * @param {boolean} showAnswer - 是否顯示答案
  */
-function renderFriendsMode(data, groups, showAnswer) {
+function renderFriendsMode(data, groups, showAnswer, labelType) {
     const perGroup = Math.ceil(data.length / groups);
     
     // 根據組數計算 grid 欄數
@@ -317,8 +336,9 @@ function renderFriendsMode(data, groups, showAnswer) {
                 <div class="friends-column">
                     <h4 class="part-title">PART ${colIndex + 1}</h4>
                     <div class="friends-grid friends-grid-${gridCols}">
-                        ${data.slice(colIndex * perGroup, (colIndex + 1) * perGroup).map(p => `
+                        ${data.slice(colIndex * perGroup, (colIndex + 1) * perGroup).map((p, i) => `
                             <div class="friends-item">
+                                ${renderLabel(colIndex * perGroup + i, labelType)}
                                 <div class="friends-nums">
                                     ${p.nums.map(n => `<span>${n}</span>`).join('')}
                                 </div>
@@ -345,9 +365,17 @@ function renderFriendsMode(data, groups, showAnswer) {
 /**
  * 直式心算模式
  */
-function renderCalcMode(data, blocks, showAnswer) {
+function renderCalcMode(data, blocks, showAnswer, labelType) {
     const perBlock = 10;
-    const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+    const isRepeated = labelType === '1-10-repeat' || labelType === 'A-J-repeat';
+    
+    // 如果是重複的，我們生成頂部標籤列
+    let headerLabels = [];
+    if (isRepeated) {
+        for(let i=0; i<10; i++) {
+             headerLabels.push(getQuestionLabel(i, labelType));
+        }
+    }
     
     let html = '<div class="calc-blocks">';
     
@@ -357,12 +385,15 @@ function renderCalcMode(data, blocks, showAnswer) {
         
         html += `
             <div class="calc-block">
-                <div class="calc-labels">
-                    ${labels.map(l => `<span>${l}</span>`).join('')}
-                </div>
-                <div class="calc-problems">
-                    ${subset.map(p => `
-                        <div class="calc-problem">
+                ${isRepeated ? `
+                    <div class="calc-labels">
+                        ${headerLabels.map(l => `<span>${l}</span>`).join('')}
+                    </div>
+                ` : ''}
+                <div class="calc-problems" style="${!isRepeated ? 'border-top: 1px solid #1a1a1a;' : ''}">
+                    ${subset.map((p, i) => `
+                        <div class="calc-problem" style="position: relative;">
+                            ${!isRepeated ? renderLabel(b * perBlock + i, labelType) : ''}
                             <div class="calc-nums">
                                 ${p.nums.map(n => `<span>${n}</span>`).join('')}
                             </div>
@@ -378,6 +409,37 @@ function renderCalcMode(data, blocks, showAnswer) {
     
     html += '</div>';
     return html;
+}
+
+/**
+ * 輔助函數：渲染題號標籤
+ */
+function renderLabel(index, format) {
+    if (!format || format === 'none') return '';
+    const label = getQuestionLabel(index, format);
+    return `<span class="question-label">${label}</span>`;
+}
+
+/**
+ * 輔助函數：計算題號文字
+ */
+function getQuestionLabel(index, format) {
+    switch (format) {
+        case '1-10-repeat':
+            return (index % 10) + 1;
+        case 'A-J-repeat':
+            const letters = 'ABCDEFGHIJ';
+            return letters[index % 10] || '?';
+        case 'A-continuous':
+            // 超過 26 題用 AA, AB... 這裡簡化處理，通常一頁不超過 50 題
+            // Z=25, AA=26
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            if (index < 26) return alphabet[index];
+            return alphabet[Math.floor(index/26)-1] + alphabet[index%26];
+        case '1-continuous':
+        default:
+            return index + 1;
+    }
 }
 
 /**
@@ -439,6 +501,9 @@ function renderAbacusColumn(val) {
 export function onEnter() {
     // 初始化時生成資料
     const settings = AppState.get('worksheet');
+    if (!settings.labelType) {
+        AppState.set('worksheet.labelType', '1-10-repeat');
+    }
     currentWorksheetData = generateWorksheetData(settings);
     
     // 綁定全域函數

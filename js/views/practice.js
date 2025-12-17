@@ -413,6 +413,19 @@ export function onEnter() {
 }
 
 /**
+ * 取得模式的中文名稱
+ */
+function getModeLabel(mode) {
+    const labels = {
+        'free': '自由練習',
+        'guided': '引導模式',
+        'challenge': '計時挑戰',
+        'review': '錯題特訓'
+    };
+    return labels[mode] || '';
+}
+
+/**
  * 離開時清理
  */
 export function onLeave() {

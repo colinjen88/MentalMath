@@ -639,6 +639,32 @@ h4 { font-size: 1.125rem; }
     flex-wrap: wrap;
 }
 
+.common-settings {
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.common-settings label {
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.common-settings select {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+}
+
 /* A4 Paper Styles */
 .a4-paper {
     width: 210mm;
@@ -796,6 +822,16 @@ h4 { font-size: 1.125rem; }
     padding: 8px;
     text-align: center;
     background: #fafafa;
+    position: relative;
+}
+
+.question-label {
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-family: var(--font-mono);
 }
 
 .number-display {
@@ -870,8 +906,9 @@ h4 { font-size: 1.125rem; }
 .friends-item {
     border-right: 1px solid #1a1a1a;
     border-bottom: 1px solid #1a1a1a;
-    padding: 6px 4px;
+    padding: 12px 8px;
     text-align: right;
+    position: relative;
 }
 
 .friends-item:nth-child(5n) {
@@ -885,8 +922,8 @@ h4 { font-size: 1.125rem; }
     font-family: var(--font-mono);
     font-size: 0.9rem;
     font-weight: 700;
-    margin-bottom: 4px;
-    line-height: 1.2;
+    margin-bottom: 8px;
+    line-height: 2.0; /* 增加行距 */
 }
 
 /* 3組和4組時使用更小的字體 */
@@ -969,20 +1006,21 @@ h4 { font-size: 1.125rem; }
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    padding: 8px 4px;
+    padding: 12px 6px 20px 6px; /* 增加底部空間 */
     font-family: var(--font-mono);
     font-weight: 700;
     font-size: 0.875rem;
+    line-height: 2.2; /* 大幅增加行距 */
 }
 
 .calc-answer {
     border-top: 1px solid #1a1a1a;
     text-align: center;
-    padding: 6px;
+    padding: 10px 6px;
     font-family: var(--font-mono);
     font-weight: 700;
     color: transparent;
-    min-height: 28px;
+    min-height: 60px; /* 增加訂正空間 */
 }
 
 .calc-answer.show {
@@ -1797,4 +1835,106 @@ h4 { font-size: 1.125rem; }
     color: var(--color-text-muted);
     margin: 0;
     line-height: 1.6;
+}
+@media (max-width: 768px) {
+    /* 頂部 Header 調整 */
+    .app-header {
+        position: fixed;
+        width: 100%;
+        top: 0;
+        left: 0;
+        padding: 10px 16px;
+        z-index: 1000;
+        justify-content: center; /* 標題置中 */
+    }
+
+    .app-title {
+        font-size: 1.1rem;
+    }
+
+    /* 隱藏使用者資訊，只留設定按鈕 (如果需要) */
+    .header-right .user-info {
+        display: none; 
+    }
+    
+    .header-right {
+        position: absolute;
+        right: 16px;
+    }
+
+    /* 底部導航欄 */
+    .header-nav {
+        display: flex !important; /* 強制顯示，覆蓋舊的 display: none */
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: rgba(15, 23, 42, 0.95); /* 深色背景 */
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 8px 0;
+        justify-content: space-around;
+        align-items: center;
+        border-top: 1px solid var(--glass-border);
+        z-index: 1000;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+    }
+
+    .nav-item {
+        padding: 4px;
+        border-radius: 0;
+        flex: 1;
+        gap: 2px;
+    }
+
+    .nav-item:hover {
+        background: transparent;
+    }
+
+    .nav-icon {
+        font-size: 1.4rem;
+    }
+
+    .nav-label {
+        font-size: 0.65rem;
+    }
+    
+    .nav-item.active {
+        background: transparent;
+        color: var(--color-primary-light);
+    }
+    
+    .nav-item.active .nav-icon {
+        transform: translateY(-2px);
+        transition: transform 0.2s;
+    }
+
+    /* 調整主內容空間 */
+    .app-main {
+        padding-top: 70px;
+        padding-bottom: 80px;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+    
+    /* 調整統計卡片 */
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    /* 調整算盤大小 */
+    .abacus-frame {
+        padding: 10px 4px;
+        gap: 1px;
+    }
+    
+    .rod {
+        margin: 0 1px;
+    }
+    
+    .bead {
+        width: 44px;
+        height: 28px;
+    }
 }
