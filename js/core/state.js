@@ -35,9 +35,45 @@ const AppState = (() => {
             digits: 1,           // 位數
             rows: 3,             // 口數
             speed: 1000,         // 閃爍速度 (ms)
+            flashTime: 600,      // 數字顯示時間比例 (0-100%)
+            clearTime: 400,      // 數字清除時間比例
             isRunning: false,
             currentProblem: null,
             score: 0,
+        },
+        
+        // 統計數據
+        statistics: {
+            totalQuestions: 0,       // 總題數
+            correctAnswers: 0,       // 正確數
+            flashQuestions: 0,       // 閃電算題數
+            flashCorrect: 0,         // 閃電算正確
+            audioQuestions: 0,       // 聽算題數
+            audioCorrect: 0,         // 聽算正確
+            practiceQuestions: 0,    // 練習題數
+            practiceCorrect: 0,      // 練習正確
+            bestStreak: 0,           // 最佳連續正確
+            totalPracticeTime: 0,    // 總練習時間 (分鐘)
+        },
+        
+        // 錯題追蹤
+        errorTracking: {
+            enabled: true,
+            errors: [],              // 錯誤題目記錄 [{problem, userAnswer, correctAnswer, type, timestamp}]
+            maxErrors: 50,           // 最多保留錯題數
+            weakAreas: [],           // 弱項分析 ['進位加法', '減法借位', ...]
+        },
+        
+        // 排行榜
+        leaderboard: {
+            daily: [],               // 每日排行 [{name, score, date}]
+            weekly: [],              // 每週排行
+            allTime: [],             // 歷史最高
+            personal: {              // 個人最佳記錄
+                flash: { score: 0, accuracy: 0, date: null },
+                audio: { score: 0, accuracy: 0, date: null },
+                challenge: { score: 0, time: 0, date: null },
+            }
         },
         
         // 學習單設定 (Legacy)
@@ -191,6 +227,9 @@ const AppState = (() => {
                 user: state.user,
                 ui: state.ui,
                 worksheet: state.worksheet,
+                statistics: state.statistics,
+                errorTracking: state.errorTracking,
+                leaderboard: state.leaderboard,
             };
             localStorage.setItem('abacus_academy_state', JSON.stringify(dataToSave));
         } catch (e) {
@@ -209,6 +248,9 @@ const AppState = (() => {
                 if (data.user) Object.assign(state.user, data.user);
                 if (data.ui) Object.assign(state.ui, data.ui);
                 if (data.worksheet) Object.assign(state.worksheet, data.worksheet);
+                if (data.statistics) Object.assign(state.statistics, data.statistics);
+                if (data.errorTracking) Object.assign(state.errorTracking, data.errorTracking);
+                if (data.leaderboard) Object.assign(state.leaderboard, data.leaderboard);
             }
         } catch (e) {
             console.warn('無法從 localStorage 載入狀態:', e);

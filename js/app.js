@@ -16,6 +16,7 @@ import FlashView from './views/flash.js';
 import AudioView from './views/audio.js';
 import PracticeView from './views/practice.js';
 import WorksheetView from './views/worksheet.js';
+import LeaderboardView from './views/leaderboard.js';
 
 /**
  * 初始化應用程式
@@ -117,6 +118,14 @@ function registerRoutes() {
         render: WorksheetView.render,
         onEnter: WorksheetView.onEnter,
         onLeave: WorksheetView.onLeave,
+    });
+    
+    // 排行榜
+    Router.register('leaderboard', {
+        title: '排行榜',
+        render: LeaderboardView.render,
+        onEnter: LeaderboardView.onEnter,
+        onLeave: LeaderboardView.onLeave,
     });
     
     // 個人檔案

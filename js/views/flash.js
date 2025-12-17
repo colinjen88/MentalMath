@@ -39,6 +39,7 @@ export function render() {
                             <option value="1" ${settings.digits === 1 ? 'selected' : ''}>1 位數</option>
                             <option value="2" ${settings.digits === 2 ? 'selected' : ''}>2 位數</option>
                             <option value="3" ${settings.digits === 3 ? 'selected' : ''}>3 位數</option>
+                            <option value="4" ${settings.digits === 4 ? 'selected' : ''}>4 位數</option>
                         </select>
                     </div>
                     <div class="setting-item">
@@ -48,18 +49,37 @@ export function render() {
                             <option value="4" ${settings.rows === 4 ? 'selected' : ''}>4 口</option>
                             <option value="5" ${settings.rows === 5 ? 'selected' : ''}>5 口</option>
                             <option value="6" ${settings.rows === 6 ? 'selected' : ''}>6 口</option>
+                            <option value="8" ${settings.rows === 8 ? 'selected' : ''}>8 口</option>
                             <option value="10" ${settings.rows === 10 ? 'selected' : ''}>10 口</option>
+                            <option value="12" ${settings.rows === 12 ? 'selected' : ''}>12 口</option>
+                            <option value="15" ${settings.rows === 15 ? 'selected' : ''}>15 口</option>
                         </select>
                     </div>
                     <div class="setting-item">
-                        <label>速度</label>
-                        <select id="flash-speed" class="setting-select">
-                            <option value="2000" ${settings.speed === 2000 ? 'selected' : ''}>慢 (2秒)</option>
+                        <label>顯示時間</label>
+                        <select id="flash-time" class="setting-select">
+                            <option value="2000" ${settings.speed === 2000 ? 'selected' : ''}>超慢 (2秒)</option>
+                            <option value="1500" ${settings.speed === 1500 ? 'selected' : ''}>慢 (1.5秒)</option>
                             <option value="1000" ${settings.speed === 1000 ? 'selected' : ''}>中 (1秒)</option>
-                            <option value="500" ${settings.speed === 500 ? 'selected' : ''}>快 (0.5秒)</option>
+                            <option value="700" ${settings.speed === 700 ? 'selected' : ''}>快 (0.7秒)</option>
+                            <option value="500" ${settings.speed === 500 ? 'selected' : ''}>很快 (0.5秒)</option>
                             <option value="300" ${settings.speed === 300 ? 'selected' : ''}>極快 (0.3秒)</option>
+                            <option value="200" ${settings.speed === 200 ? 'selected' : ''}>瞬間 (0.2秒)</option>
                         </select>
                     </div>
+                    <div class="setting-item">
+                        <label>間隔時間</label>
+                        <select id="flash-gap" class="setting-select">
+                            <option value="50">極短</option>
+                            <option value="100">短</option>
+                            <option value="200" selected>正常</option>
+                            <option value="400">長</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="difficulty-preview">
+                    <span class="preview-label">難度預覽：</span>
+                    <span class="preview-value" id="difficulty-preview">初級</span>
                 </div>
                 <button class="btn btn-primary btn-large" id="start-flash-btn" onclick="window.startFlash()">
                     ▶️ 開始訓練
@@ -134,7 +154,8 @@ async function startFlash() {
     // 讀取設定
     const digits = parseInt(document.getElementById('flash-digits').value);
     const rows = parseInt(document.getElementById('flash-rows').value);
-    const speed = parseInt(document.getElementById('flash-speed').value);
+    const speed = parseInt(document.getElementById('flash-time').value);
+    const gap = parseInt(document.getElementById('flash-gap').value);
     
     // 更新狀態
     AppState.batchUpdate({
@@ -142,6 +163,9 @@ async function startFlash() {
         'training.rows': rows,
         'training.speed': speed,
     });
+    
+    // 儲存間隔時間到本地狀態
+    trainingState.gap = gap;
     
     // 產生題目
     trainingState.currentProblem = generateProblem({ rows, digits });
@@ -176,12 +200,13 @@ async function startFlash() {
         // 播放音效
         AudioManager.play('flash');
         
-        await sleep(speed * 0.6);
+        await sleep(speed * 0.7);
         
         // 隱藏數字
         numberEl.classList.remove('flash-active');
         
-        await sleep(speed * 0.4);
+        // 使用設定的間隔時間
+        await sleep(trainingState.gap || 200);
     }
     
     // 顯示答題區
@@ -204,15 +229,61 @@ function submitFlashAnswer() {
     
     const isCorrect = userAnswer === correctAnswer;
     
+    // 更新全局統計
+    const stats = AppState.get('statistics');
+    const leaderboard = AppState.get('leaderboard');
+    
     if (isCorrect) {
         trainingState.correctCount++;
-        trainingState.score += 10;
+        trainingState.streak = (trainingState.streak || 0) + 1;
+        trainingState.score += 10 + Math.min(trainingState.streak, 10) * 2; // 連續加分
         AudioManager.play('correct');
+        
+        // 更新最佳連續記錄
+        if (trainingState.streak > stats.bestStreak) {
+            AppState.set('statistics.bestStreak', trainingState.streak);
+        }
     } else {
+        trainingState.streak = 0;
         AudioManager.play('wrong');
+        
+        // 記錄錯題
+        const errorTracking = AppState.get('errorTracking');
+        if (errorTracking.enabled) {
+            const errors = errorTracking.errors || [];
+            errors.unshift({
+                problem: trainingState.currentProblem.nums,
+                userAnswer,
+                correctAnswer,
+                type: 'flash',
+                timestamp: Date.now(),
+            });
+            // 保持最多 50 題
+            if (errors.length > errorTracking.maxErrors) {
+                errors.pop();
+            }
+            AppState.set('errorTracking.errors', errors);
+        }
     }
     
-    // 更新統計
+    // 更新全局統計
+    AppState.batchUpdate({
+        'statistics.totalQuestions': stats.totalQuestions + 1,
+        'statistics.correctAnswers': stats.correctAnswers + (isCorrect ? 1 : 0),
+        'statistics.flashQuestions': stats.flashQuestions + 1,
+        'statistics.flashCorrect': stats.flashCorrect + (isCorrect ? 1 : 0),
+    });
+    
+    // 更新個人最佳記錄
+    if (trainingState.score > leaderboard.personal.flash.score) {
+        AppState.set('leaderboard.personal.flash', {
+            score: trainingState.score,
+            accuracy: Math.round((trainingState.correctCount / trainingState.totalQuestions) * 100),
+            date: Date.now(),
+        });
+    }
+    
+    // 更新 UI 統計
     document.getElementById('flash-score').textContent = trainingState.score;
     document.getElementById('flash-count').textContent = trainingState.totalQuestions;
     document.getElementById('flash-accuracy').textContent = 
@@ -228,6 +299,7 @@ function submitFlashAnswer() {
         <p>題目：${trainingState.currentProblem.nums.join(' → ')}</p>
         <p>正確答案：<strong>${correctAnswer}</strong></p>
         ${!isCorrect ? `<p>你的答案：${userAnswer}</p>` : ''}
+        ${trainingState.streak >= 3 ? `<p class="streak-bonus">🔥 連續 ${trainingState.streak} 題正確！</p>` : ''}
     `;
     
     // 清空輸入

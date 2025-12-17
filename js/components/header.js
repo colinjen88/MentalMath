@@ -20,7 +20,9 @@ export function renderHeader() {
         { id: 'home', icon: '🏠', label: '大廳' },
         { id: 'practice', icon: '🧮', label: '練功房' },
         { id: 'flash', icon: '⚡', label: '閃電算' },
+        { id: 'audio', icon: '🎧', label: '聽算' },
         { id: 'worksheet', icon: '📄', label: '學習單' },
+        { id: 'leaderboard', icon: '🏆', label: '排行榜' },
         { id: 'profile', icon: '👤', label: '我的' },
     ];
     
