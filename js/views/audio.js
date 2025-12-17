@@ -43,6 +43,7 @@ export function render() {
                         <select id="audio-digits" class="setting-select">
                             <option value="1" ${settings.digits === 1 ? 'selected' : ''}>1 位數</option>
                             <option value="2" ${settings.digits === 2 ? 'selected' : ''}>2 位數</option>
+                            <option value="3" ${settings.digits === 3 ? 'selected' : ''}>3 位數</option>
                         </select>
                     </div>
                     <div class="setting-item">
@@ -51,6 +52,9 @@ export function render() {
                             <option value="3" ${settings.rows === 3 ? 'selected' : ''}>3 口</option>
                             <option value="4" ${settings.rows === 4 ? 'selected' : ''}>4 口</option>
                             <option value="5" ${settings.rows === 5 ? 'selected' : ''}>5 口</option>
+                            <option value="6" ${settings.rows === 6 ? 'selected' : ''}>6 口</option>
+                            <option value="8" ${settings.rows === 8 ? 'selected' : ''}>8 口</option>
+                            <option value="10" ${settings.rows === 10 ? 'selected' : ''}>10 口</option>
                         </select>
                     </div>
                     <div class="setting-item">
@@ -58,14 +62,34 @@ export function render() {
                         <select id="audio-lang" class="setting-select">
                             <option value="zh-TW">中文</option>
                             <option value="en-US">English</option>
+                            <option value="ja-JP">日本語</option>
                         </select>
                     </div>
                     <div class="setting-item">
                         <label>語速</label>
                         <select id="audio-speed" class="setting-select">
+                            <option value="0.6">很慢</option>
                             <option value="0.8">慢速</option>
                             <option value="1.0" selected>正常</option>
                             <option value="1.2">快速</option>
+                            <option value="1.5">很快</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>數字間隔</label>
+                        <select id="audio-interval" class="setting-select">
+                            <option value="200">極短</option>
+                            <option value="400">短</option>
+                            <option value="600" selected>正常</option>
+                            <option value="1000">長</option>
+                            <option value="1500">很長</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>運算模式</label>
+                        <select id="audio-mode" class="setting-select">
+                            <option value="add" selected>純加法</option>
+                            <option value="mixed">加減混合</option>
                         </select>
                     </div>
                 </div>
@@ -166,15 +190,22 @@ async function startAudioTraining() {
     const rows = parseInt(document.getElementById('audio-rows').value);
     const lang = document.getElementById('audio-lang').value;
     const speed = parseFloat(document.getElementById('audio-speed').value);
+    const interval = parseInt(document.getElementById('audio-interval').value);
+    const mode = document.getElementById('audio-mode').value;
     
-    // 產生題目
-    audioState.currentProblem = generateProblem({ rows, digits });
+    // 產生題目 (純加法或混合)
+    audioState.currentProblem = generateProblem({ 
+        rows, 
+        digits,
+        allowNegative: mode === 'mixed' 
+    });
     audioState.isRunning = true;
     audioState.currentIndex = 0;
     
     // 儲存設定
     audioState.lang = lang;
     audioState.speed = speed;
+    audioState.interval = interval;
     
     // 切換 UI
     document.getElementById('audio-settings').style.display = 'none';
@@ -193,6 +224,7 @@ async function speakProblem() {
     const nums = audioState.currentProblem.nums;
     const lang = audioState.lang;
     const speed = audioState.speed;
+    const interval = audioState.interval || 500;
     
     const statusEl = document.getElementById('audio-status');
     const progressFill = document.getElementById('audio-progress-fill');
@@ -202,9 +234,13 @@ async function speakProblem() {
     // 顯示音波動畫
     soundWave.classList.add('active');
     
-    const operators = lang === 'zh-TW' 
-        ? { plus: '加', minus: '減' }
-        : { plus: 'plus', minus: 'minus' };
+    // 各語言的運算符
+    const operators = {
+        'zh-TW': { plus: '加', minus: '減' },
+        'en-US': { plus: 'plus', minus: 'minus' },
+        'ja-JP': { plus: 'たす', minus: 'ひく' },
+    };
+    const op = operators[lang] || operators['zh-TW'];
     
     for (let i = 0; i < nums.length; i++) {
         if (!audioState.isRunning) break;
@@ -217,18 +253,20 @@ async function speakProblem() {
         
         const num = nums[i];
         
-        // 顯示狀態
+        // 顯示狀態和朗讀運算符 (第一個數字不需要)
         if (i > 0) {
-            const opText = num >= 0 ? operators.plus : operators.minus;
+            const opText = num >= 0 ? op.plus : op.minus;
             statusEl.textContent = `${opText}...`;
             await speakText(opText, lang, speed);
-            await sleep(300);
+            await sleep(interval * 0.3);
         }
         
         // 朗讀數字
         statusEl.textContent = `${Math.abs(num)}`;
         await speakText(String(Math.abs(num)), lang, speed);
-        await sleep(500);
+        
+        // 使用設定的間隔時間
+        await sleep(interval);
     }
     
     // 朗讀完成
@@ -294,18 +332,63 @@ function submitAudioAnswer() {
     
     const isCorrect = userAnswer === correctAnswer;
     
+    // 更新全局統計
+    const stats = AppState.get('statistics');
+    const leaderboard = AppState.get('leaderboard');
+    
     if (isCorrect) {
         audioState.correctCount++;
-        audioState.score += 15; // 聽力題更難，給更多分
+        audioState.streak = (audioState.streak || 0) + 1;
+        audioState.score += 15 + Math.min(audioState.streak, 10) * 3; // 聽力題更難，給更多分
         AudioManager.play('correct');
         
         // 加經驗值
         addXP(15);
+        
+        // 更新最佳連續記錄
+        if (audioState.streak > stats.bestStreak) {
+            AppState.set('statistics.bestStreak', audioState.streak);
+        }
     } else {
+        audioState.streak = 0;
         AudioManager.play('wrong');
+        
+        // 記錄錯題
+        const errorTracking = AppState.get('errorTracking');
+        if (errorTracking.enabled) {
+            const errors = errorTracking.errors || [];
+            errors.unshift({
+                problem: audioState.currentProblem.nums,
+                userAnswer,
+                correctAnswer,
+                type: 'audio',
+                timestamp: Date.now(),
+            });
+            if (errors.length > errorTracking.maxErrors) {
+                errors.pop();
+            }
+            AppState.set('errorTracking.errors', errors);
+        }
     }
     
-    // 更新統計
+    // 更新全局統計
+    AppState.batchUpdate({
+        'statistics.totalQuestions': stats.totalQuestions + 1,
+        'statistics.correctAnswers': stats.correctAnswers + (isCorrect ? 1 : 0),
+        'statistics.audioQuestions': stats.audioQuestions + 1,
+        'statistics.audioCorrect': stats.audioCorrect + (isCorrect ? 1 : 0),
+    });
+    
+    // 更新個人最佳記錄
+    if (audioState.score > leaderboard.personal.audio.score) {
+        AppState.set('leaderboard.personal.audio', {
+            score: audioState.score,
+            accuracy: Math.round((audioState.correctCount / audioState.totalQuestions) * 100),
+            date: Date.now(),
+        });
+    }
+    
+    // 更新 UI 統計
     document.getElementById('audio-score').textContent = audioState.score;
     document.getElementById('audio-count').textContent = audioState.totalQuestions;
     document.getElementById('audio-accuracy').textContent = 
@@ -321,6 +404,7 @@ function submitAudioAnswer() {
         <p>題目：${audioState.currentProblem.nums.join(' → ')}</p>
         <p>正確答案：<strong>${correctAnswer}</strong></p>
         ${!isCorrect ? `<p>你的答案：${userAnswer}</p>` : ''}
+        ${audioState.streak >= 3 ? `<p class="streak-bonus">🔥 連續 ${audioState.streak} 題正確！</p>` : ''}
     `;
     
     // 清空輸入
