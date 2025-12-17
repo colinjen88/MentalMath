@@ -45,15 +45,15 @@ class Abacus {
         // 尺寸設定
         this.config = {
             columnWidth: 50,
-            height: 180,
-            beadHeight: 22,
-            beadWidth: 40,
-            beadGap: 2,
+            height: 220,        // 增加高度容納所有珠子
+            beadHeight: 20,     // 稍微縮小珠子
+            beadWidth: 38,
+            beadGap: 3,
             rodWidth: 4,
-            beamY: 55,          // 橫樑 Y 位置
+            beamY: 60,          // 橫樑 Y 位置
             beamHeight: 8,
-            heavenTop: 8,       // 上珠區頂部
-            earthTop: 70,       // 下珠區頂部
+            heavenTop: 10,      // 上珠區頂部
+            earthTop: 75,       // 下珠區頂部 (橫樑下方)
             padding: 10,
         };
         
@@ -267,29 +267,40 @@ class Abacus {
         const hasHeaven = value >= 5;
         const earthCount = value % 5;
         
-        const { beadHeight, beadGap, beamY, beamHeight, heavenTop, earthTop } = this.config;
+        const { beadHeight, beadGap, beamY, beamHeight, heavenTop, height } = this.config;
         
         const colBeads = this.beads[col];
         
         // 上珠位置
-        // 激活時靠近橫樑，未激活時在頂部
+        // 激活時靠近橫樑 (向下移動)，未激活時在頂部
         const heavenY = hasHeaven 
             ? beamY - beadHeight / 2 - beadGap 
             : heavenTop + beadHeight / 2;
         colBeads.heaven.setAttribute('cy', heavenY);
-        colBeads.heaven.setAttribute('fill', hasHeaven ? 'url(#bead-gradient)' : 'url(#bead-gradient)');
-        colBeads.heaven.style.opacity = hasHeaven ? 1 : 0.4;
+        colBeads.heaven.style.opacity = hasHeaven ? 1 : 0.5;
         
-        // 下珠位置
+        // 下珠位置 - 從橫樑下方開始排列
+        // 4顆珠子，i=0 最靠近橫樑，i=3 最遠離橫樑
+        const earthStartY = beamY + beamHeight + beadGap + beadHeight / 2; // 第一顆珠子的Y位置 (最靠近橫樑)
+        
         for (let i = 0; i < 4; i++) {
             const isActive = i < earthCount;
-            // 激活的珠子靠近橫樑
-            const earthY = isActive
-                ? beamY + beamHeight + beadGap + (earthCount - 1 - i) * (beadHeight + beadGap) + beadHeight / 2
-                : earthTop + (3 - i) * (beadHeight + beadGap) + beadHeight / 2 + 30;
+            let earthY;
+            
+            if (isActive) {
+                // 激活的珠子緊貼在橫樑下方，依序排列
+                earthY = earthStartY + i * (beadHeight + beadGap);
+            } else {
+                // 未激活的珠子在底部區域
+                // 計算未激活珠子的起始位置 (從底部往上排)
+                const inactiveCount = 4 - earthCount;
+                const inactiveIndex = i - earthCount; // 在未激活珠子中的索引
+                const bottomY = height - beadHeight / 2 - 5; // 最底部珠子位置
+                earthY = bottomY - (inactiveCount - 1 - inactiveIndex) * (beadHeight + beadGap);
+            }
             
             colBeads.earth[i].setAttribute('cy', earthY);
-            colBeads.earth[i].style.opacity = isActive ? 1 : 0.4;
+            colBeads.earth[i].style.opacity = isActive ? 1 : 0.5;
         }
     }
     
