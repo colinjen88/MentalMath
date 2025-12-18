@@ -1,6 +1,6 @@
 # 🧮 Abacus Academy (珠心算學院)
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![PWA](https://img.shields.io/badge/PWA-Supported-orange.svg)
 
@@ -51,24 +51,28 @@
 ## 🚀 快速開始 (Getting Started)
 
 ### 線上體驗 (Demo)
-*(在此處填入您的 GitHub Pages 連結)*
+[https://colinjen88.github.io/MentalMath/](https://colinjen88.github.io/MentalMath/)
 
 ### 本地安裝 (Local Installation)
 
 1.  複製專案 (Clone the repo)
     ```bash
-    git clone https://github.com/yourusername/mental-math.git
+    git clone https://github.com/colinjen88/MentalMath.git
     ```
 
 2.  進入目錄
     ```bash
-    cd mental-math
+    cd MentalMath
     ```
 
-3.  啟動本地伺服器 (使用 Live Server 或類似工具)
-    如果您安裝了 Node.js，可以使用 `serve`:
+3.  啟動本地伺服器
+    如果您安裝了 Node.js，可以使用 `serve` 或 `http-server`:
     ```bash
     npx serve .
+    ```
+    或者使用 Python:
+    ```bash
+    python -m http.server 3000
     ```
 
 4.  打開瀏覽器
@@ -91,4 +95,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Created with ❤️ by [Your Name]
+## 👥 Authors
+
+Created with ❤️ by **Colin Jen** ([colinjen88](https://github.com/colinjen88))
