@@ -132,14 +132,14 @@ body::before {
 
 /* Form Elements Polish */
 select, input {
-    background-color: rgba(0, 0, 0, 0.2) !important;
+    background-color: var(--glass-bg) !important;
     border: 1px solid var(--glass-border) !important;
     color: var(--color-text) !important;
     backdrop-filter: blur(4px);
 }
 
 option {
-    background-color: var(--color-bg); /* 下拉選項不支援透明 */
+    background-color: var(--color-bg-light);
     color: var(--color-text);
 }
 
@@ -1219,13 +1219,18 @@ h4 { font-size: 1.125rem; }
 /* ===================================
    Responsive
    =================================== */
+/* ===================================
+   Responsive
+   =================================== */
 @media (max-width: 768px) {
-    .header-nav {
-        display: none;
+    /* Main Layout Adjustments */
+    .app-main {
+        padding-bottom: 80px; /* Space for bottom nav */
     }
-    
+
     .welcome-section {
         grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
     }
     
     .quick-actions {
@@ -1244,6 +1249,16 @@ h4 { font-size: 1.125rem; }
     
     .grid-5 {
         grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .grid-5 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .quick-actions {
+        grid-template-columns: 1fr; /* Single column for very small screens */
     }
 }
 
@@ -1565,17 +1580,15 @@ h4 { font-size: 1.125rem; }
 }
 
 /* Flash Number Scaling */
-.flash-number[data-digits="1"] { font-size: 8rem; }
-.flash-number[data-digits="2"] { font-size: 7rem; }
-.flash-number[data-digits="3"] { font-size: 6rem; }
-.flash-number[data-digits="4"] { font-size: 5rem; }
-
-@media (max-width: 768px) {
-    .flash-number[data-digits="1"] { font-size: 6rem; }
-    .flash-number[data-digits="2"] { font-size: 5rem; }
-    .flash-number[data-digits="3"] { font-size: 4rem; }
-    .flash-number[data-digits="4"] { font-size: 3rem; }
+/* Flash Number Scaling - Responsive with Viewport Units */
+.flash-number {
+    font-size: clamp(3rem, 15vw, 8rem);
+    line-height: 1.1;
 }
+
+/* Specific adjustments if needed, but clamp handles most */
+.flash-number[data-digits="3"] { font-size: clamp(3rem, 12vw, 6rem); }
+.flash-number[data-digits="4"] { font-size: clamp(2rem, 10vw, 5rem); }
 
 /* ===================================
    Responsive Additions
@@ -1910,68 +1923,60 @@ h4 { font-size: 1.125rem; }
     line-height: 1.6;
 }
 @media (max-width: 768px) {
-    /* 頂部 Header 調整 */
+    /* Header & Navigation Mobile Styles */
     .app-header {
-        position: fixed;
-        width: 100%;
+        position: sticky; /* Keep it sticky at top */
         top: 0;
-        left: 0;
-        padding: 10px 16px;
         z-index: 1000;
-        justify-content: center; /* 標題置中 */
+        padding: 0.75rem var(--spacing-md);
+        justify-content: space-between;
     }
 
     .app-title {
         font-size: 1.1rem;
     }
 
-    /* 隱藏使用者資訊，只留設定按鈕 (如果需要) */
+    /* Hide User Info on Mobile Header, keep settings if needed */
     .header-right .user-info {
         display: none; 
     }
     
-    .header-right {
-        position: absolute;
-        right: 16px;
-    }
-
-    /* 底部導航欄 */
+    /* Bottom Navigation Bar */
     .header-nav {
-        display: flex !important; /* 強制顯示，覆蓋舊的 display: none */
         position: fixed;
         bottom: 0;
         left: 0;
         width: 100%;
-        background: rgba(15, 23, 42, 0.95); /* 深色背景 */
+        background: rgba(15, 23, 42, 0.95);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         padding: 8px 0;
+        display: flex; /* Ensure flex is active */
         justify-content: space-around;
         align-items: center;
         border-top: 1px solid var(--glass-border);
-        z-index: 1000;
         box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+        z-index: 999;
+        overflow-x: hidden; /* Prevent horizontal scroll */
     }
 
     .nav-item {
+        flex: 1;
         padding: 4px;
         border-radius: 0;
-        flex: 1;
         gap: 2px;
     }
-
-    .nav-item:hover {
-        background: transparent;
+    
+    .nav-label {
+        display: block; /* Show labels on bottom nav */
+        font-size: 0.65rem;
     }
 
     .nav-icon {
-        font-size: 1.4rem;
+        font-size: 1.25rem;
+        margin-bottom: 0;
     }
 
-    .nav-label {
-        font-size: 0.65rem;
-    }
-    
     .nav-item.active {
         background: transparent;
         color: var(--color-primary-light);
@@ -1979,24 +1984,22 @@ h4 { font-size: 1.125rem; }
     
     .nav-item.active .nav-icon {
         transform: translateY(-2px);
-        transition: transform 0.2s;
     }
 
-    /* 調整主內容空間 */
-    .app-main {
-        padding-top: 70px;
-        padding-bottom: 80px;
-        padding-left: 16px;
-        padding-right: 16px;
-    }
+    /* Content Padding Adjustment was handled in earlier media query block */
     
-    /* 調整統計卡片 */
+    /* Stats Grid Responsiveness */
     .stats-grid {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: var(--spacing-md);
     }
     
-    /* 調整算盤大小 */
+    /* Mode Cards Responsiveness */
+    .mode-cards {
+        grid-template-columns: 1fr;
+    }
+
+    /* Abacus Mobile Optimization */
     .abacus-frame {
         padding: 10px 4px;
         gap: 1px;
@@ -2007,7 +2010,7 @@ h4 { font-size: 1.125rem; }
     }
     
     .bead {
-        width: 44px;
-        height: 28px;
+        width: 40px; /* Slightly smaller to fit */
+        height: 26px;
     }
 }
