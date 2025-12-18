@@ -13,9 +13,18 @@ import Router from '../core/router.js';
  * @returns {string} HTML 字串
  */
 export function renderHeader() {
+    // 檢查當前路徑是否有 hideHeader 標記
+    const currentRoute = Router.currentRoute; 
+    const isHidden = Router.routes[currentRoute]?.hideHeader;
+    
+    if (isHidden) {
+        return ''; // 不渲染 Header
+    }
+
     const user = AppState.get('user');
     const currentView = AppState.get('currentView');
     
+    // ... existing code ...
     const navItems = [
         { id: 'home', icon: '🏠', label: '大廳' },
         { id: 'practice', icon: '🧮', label: '練功房' },

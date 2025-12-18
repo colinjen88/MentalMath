@@ -50,8 +50,8 @@
 
 ## 🚀 快速開始 (Getting Started)
 
-### 線上體驗 (Demo)
-[https://colinjen88.github.io/MentalMath/](https://colinjen88.github.io/MentalMath/)
+### 在線體驗 (Online Experience)
+[https://gowork.run/MentalMath](https://gowork.run/MentalMath)
 
 ### 本地安裝 (Local Installation)
 

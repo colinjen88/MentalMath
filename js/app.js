@@ -17,6 +17,7 @@ import AudioView from './views/audio.js';
 import PracticeView from './views/practice.js';
 import WorksheetView from './views/worksheet.js';
 import LeaderboardView from './views/leaderboard.js';
+import SplashView from './views/splash.js';
 
 /**
  * 初始化應用程式
@@ -38,6 +39,11 @@ function initApp() {
     
     // 啟動路由器
     Router.init();
+    
+    // 如果是根路徑且沒有 hash，預設前往 splash
+    if (!location.hash || location.hash === '#/') {
+        Router.navigate('splash');
+    }
     
     // 監聽狀態變更更新 UI
     AppState.subscribe('user', () => updateHeader());
@@ -145,6 +151,15 @@ function registerRoutes() {
         render: LeaderboardView.render,
         onEnter: LeaderboardView.onEnter,
         onLeave: LeaderboardView.onLeave,
+    });
+    
+    // 啟動頁
+    Router.register('splash', {
+        title: '歡迎',
+        render: SplashView.render,
+        onEnter: SplashView.onEnter,
+        onLeave: SplashView.onLeave,
+        hideHeader: true // 特殊標記：隱藏 Header
     });
     
     // 個人檔案
