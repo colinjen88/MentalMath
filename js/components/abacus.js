@@ -57,8 +57,12 @@ class Abacus {
             padding: 10,
         };
         
-        // 拖曳狀態
+        // 互動與焦點狀態
         this.dragging = null;
+        this.focusedCol = this.columns - 1; // 預設聚焦在最右邊 (個位)
+        this.focusedType = 'earth';         // 'heaven' or 'earth'
+        this.focusedIndex = 0;              // 下珠的索引 (0-3)
+        this.isFocused = false;
         
         this.init();
     }
@@ -90,6 +94,13 @@ class Abacus {
         this.svg.style.height = 'auto';
         this.svg.style.userSelect = 'none';
         this.svg.style.touchAction = 'none';
+        this.svg.style.outline = 'none';
+        
+        if (this.interactive) {
+            this.svg.setAttribute('tabindex', '0');
+            this.svg.setAttribute('role', 'application');
+            this.svg.setAttribute('aria-label', `互動算盤, 目前數值 ${this.getValue()}`);
+        }
         
         // 背景漸層
         const defs = document.createElementNS(svgNS, 'defs');
@@ -102,9 +113,9 @@ class Abacus {
         bgGradient.setAttribute('x2', '0%');
         bgGradient.setAttribute('y2', '100%');
         bgGradient.innerHTML = `
-            <stop offset="0%" style="stop-color:#8B4513"/>
-            <stop offset="50%" style="stop-color:#A0522D"/>
-            <stop offset="100%" style="stop-color:#8B4513"/>
+            <stop offset="0%" style="stop-color:var(--abacus-frame-start)"/>
+            <stop offset="50%" style="stop-color:var(--abacus-frame-mid)"/>
+            <stop offset="100%" style="stop-color:var(--abacus-frame-end)"/>
         `;
         defs.appendChild(bgGradient);
         
@@ -114,8 +125,8 @@ class Abacus {
         beadGradient.setAttribute('cx', '30%');
         beadGradient.setAttribute('cy', '30%');
         beadGradient.innerHTML = `
-            <stop offset="0%" style="stop-color:#555"/>
-            <stop offset="100%" style="stop-color:#1a1a1a"/>
+            <stop offset="0%" style="stop-color:var(--abacus-bead-start)"/>
+            <stop offset="100%" style="stop-color:var(--abacus-bead-end)"/>
         `;
         defs.appendChild(beadGradient);
         
@@ -125,8 +136,8 @@ class Abacus {
         beadActiveGradient.setAttribute('cx', '30%');
         beadActiveGradient.setAttribute('cy', '30%');
         beadActiveGradient.innerHTML = `
-            <stop offset="0%" style="stop-color:#FFD700"/>
-            <stop offset="100%" style="stop-color:#B8860B"/>
+            <stop offset="0%" style="stop-color:var(--abacus-bead-active-start)"/>
+            <stop offset="100%" style="stop-color:var(--abacus-bead-active-end)"/>
         `;
         defs.appendChild(beadActiveGradient);
         
@@ -140,7 +151,7 @@ class Abacus {
         frame.setAttribute('height', height);
         frame.setAttribute('rx', 8);
         frame.setAttribute('fill', 'url(#abacus-bg)');
-        frame.setAttribute('stroke', '#5D3A1A');
+        frame.setAttribute('stroke', 'var(--abacus-frame-stroke)');
         frame.setAttribute('stroke-width', 3);
         this.svg.appendChild(frame);
         
@@ -150,7 +161,7 @@ class Abacus {
         beam.setAttribute('y', this.config.beamY);
         beam.setAttribute('width', totalWidth);
         beam.setAttribute('height', this.config.beamHeight);
-        beam.setAttribute('fill', '#3D2314');
+        beam.setAttribute('fill', 'var(--abacus-beam)');
         this.svg.appendChild(beam);
         
         // 繪製每一列
@@ -167,8 +178,8 @@ class Abacus {
             this.valueDisplay.setAttribute('text-anchor', 'middle');
             this.valueDisplay.setAttribute('font-size', '24');
             this.valueDisplay.setAttribute('font-weight', 'bold');
-            this.valueDisplay.setAttribute('font-family', 'monospace');
-            this.valueDisplay.setAttribute('fill', '#333');
+            this.valueDisplay.setAttribute('font-family', 'var(--font-mono)');
+            this.valueDisplay.setAttribute('fill', 'var(--color-text)');
             this.valueDisplay.textContent = this.getValue();
             this.svg.appendChild(this.valueDisplay);
         }
@@ -194,7 +205,7 @@ class Abacus {
         rod.setAttribute('y', 5);
         rod.setAttribute('width', rodWidth);
         rod.setAttribute('height', this.config.height - 10);
-        rod.setAttribute('fill', '#C0A080');
+        rod.setAttribute('fill', 'var(--abacus-rod)');
         rod.setAttribute('rx', 2);
         this.svg.appendChild(rod);
         
@@ -203,7 +214,7 @@ class Abacus {
         locator.setAttribute('cx', x);
         locator.setAttribute('cy', this.config.beamY + this.config.beamHeight / 2);
         locator.setAttribute('r', 3);
-        locator.setAttribute('fill', '#FFD700');
+        locator.setAttribute('fill', 'var(--abacus-locator)');
         this.svg.appendChild(locator);
         
         // 算珠群組
@@ -242,7 +253,7 @@ class Abacus {
         bead.setAttribute('rx', beadWidth / 2);
         bead.setAttribute('ry', beadHeight / 2);
         bead.setAttribute('fill', 'url(#bead-gradient)');
-        bead.setAttribute('stroke', '#333');
+        bead.setAttribute('stroke', 'var(--abacus-bead-stroke)');
         bead.setAttribute('stroke-width', 1);
         bead.setAttribute('cursor', this.interactive ? 'pointer' : 'default');
         bead.setAttribute('class', 'abacus-bead');
@@ -311,6 +322,95 @@ class Abacus {
         // 點擊/觸控事件
         this.svg.addEventListener('click', (e) => this.handleClick(e));
         this.svg.addEventListener('touchstart', (e) => this.handleTouch(e), { passive: false });
+        
+        // 鍵盤事件
+        this.svg.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        this.svg.addEventListener('focus', () => {
+            this.isFocused = true;
+            this.updateFocusedBeadHighlight();
+        });
+        this.svg.addEventListener('blur', () => {
+            this.isFocused = false;
+            this.updateFocusedBeadHighlight();
+        });
+    }
+
+    /**
+     * 處理鍵盤按鍵
+     */
+    handleKeyDown(e) {
+        if (!this.interactive) return;
+
+        let handled = true;
+        switch (e.key) {
+            case 'ArrowLeft':
+                this.focusedCol = Math.max(0, this.focusedCol - 1);
+                break;
+            case 'ArrowRight':
+                this.focusedCol = Math.min(this.columns - 1, this.focusedCol + 1);
+                break;
+            case 'ArrowUp':
+                if (this.focusedType === 'earth') {
+                    if (this.focusedIndex > 0) {
+                        this.focusedIndex--;
+                    } else {
+                        this.focusedType = 'heaven';
+                    }
+                }
+                break;
+            case 'ArrowDown':
+                if (this.focusedType === 'heaven') {
+                    this.focusedType = 'earth';
+                    this.focusedIndex = 0;
+                } else if (this.focusedIndex < 3) {
+                    this.focusedIndex++;
+                }
+                break;
+            case ' ':
+            case 'Enter':
+                this.toggleBead(this.focusedCol, this.focusedType);
+                break;
+            default:
+                handled = false;
+        }
+
+        if (handled) {
+            e.preventDefault();
+            this.updateFocusedBeadHighlight();
+        }
+    }
+
+    /**
+     * 更新聚焦珠子的高亮顯示
+     */
+    updateFocusedBeadHighlight() {
+        // 先移除所有高亮
+        this.svg.querySelectorAll('.abacus-bead').forEach(bead => {
+            bead.classList.remove('bead-focused');
+            bead.removeAttribute('stroke-dasharray');
+        });
+
+        if (!this.isFocused) return;
+
+        // 取得當前聚焦的珠子
+        let targetBead;
+        const colBeads = this.beads[this.focusedCol];
+        if (this.focusedType === 'heaven') {
+            targetBead = colBeads.heaven;
+        } else {
+            targetBead = colBeads.earth[this.focusedIndex];
+        }
+
+        if (targetBead) {
+            targetBead.classList.add('bead-focused');
+            // 加入細微的虛線框效果
+            targetBead.setAttribute('stroke-dasharray', '2,2');
+            targetBead.setAttribute('stroke', 'var(--color-primary-light)');
+            targetBead.setAttribute('stroke-width', '2');
+        }
+        
+        // 更新 ARIA label
+        this.svg.setAttribute('aria-label', `互動算盤, 目前數值 ${this.getValue()}, 聚焦位數 ${this.columns - this.focusedCol}`);
     }
     
     /**
@@ -376,6 +476,7 @@ class Abacus {
             this.values[col] = newValue;
             this.updateColumnBeads(col);
             this.updateValueDisplay();
+            this.updateFocusedBeadHighlight(); // 更新焦點 (如果因為值變動珠子位移)
             
             // 觸覺回饋 (Haptic Feedback)
             if ('vibrate' in navigator) {

@@ -1,8 +1,8 @@
 # 📋 專案現況文件 (Project Status)
 
 **專案名稱**: 珠心算學院 (Abacus Academy)  
-**更新日期**: 2025-12-17  
-**版本**: v1.2.0
+**更新日期**: 2025-12-25  
+**版本**: v1.4.0 (Optimization Release)
 
 ---
 
@@ -23,6 +23,7 @@
 | 工具函數 | 題目生成、格式化等 | `js/core/utils.js` |
 | 互動算盤 | SVG 繪製，支援拖曳/點擊 | `js/components/abacus.js` |
 | 頂部導航 | 使用者資訊、XP 條、導航 | `js/components/header.js` |
+| 底部導航 | 手機版專用導航列 (New) | `js/components/bottom-nav.js` |
 
 ### Phase 2 - 訓練模組
 | 模組 | 功能說明 | 檔案 |
@@ -33,6 +34,7 @@
 | 聽力訓練 (Audio) | 1-3位數、中英日語、純加法/混合模式、5種語速 | `js/views/audio.js` |
 | 學習單 (Worksheet) | 看珠寫數/看數畫珠/湊數/直式計算，A4 列印 | `js/views/worksheet.js` |
 | 排行榜 (Leaderboard) | 個人統計、各模式表現、最佳記錄、學習分析 | `js/views/leaderboard.js` |
+| 啟動頁 (Splash) | 應用程式載入與歡迎動畫 | `js/views/splash.js` |
 
 ### Phase 3 - 遊戲化系統
 | 功能 | 說明 |
@@ -49,10 +51,20 @@
 
 ### 🟢 Phase 4: 發布與細節優化 (Completed)
 - [x] **PWA 支援**: Manifest, Service Worker, 安裝提示
-- [x] **手機版優化**: 底部導航欄, 觸覺回饋, 響應式佈局
+- [x] **手機版優化**: 底部導航欄, 觸覺回饋, 響應式佈局 (v1.3.0)
 - [x] **學習單增強**: 自訂題號, 行距優化, A4 列印排版
 - [x] **使用者體驗**: 首頁動態格言, 安裝按鈕, 按鈕統一
 - [x] **UI 主題升級**: Liquid Glass (流體玻璃) 風格, 動態背景, 質感元件
+
+### 🔵 Phase 5 - UI/UX & Detail Optimization (Completed v1.4.0)
+| 功能 | 說明 |
+|------|------|
+| SVG 主題同步 | 算盤算珠顏色隨深淺模式自動切換 (CSS Variables) |
+| 全導航無障礙 | 實作算盤鍵盤操作 (Arrows, Enter, Space) 與 ARIA 支援 |
+| 視覺反饋增強 | 閃電心算數字彈出動畫、結果圖示彈動特效 |
+| 行動自適應進階 | 優化手機橫屏佈局、學習單 A4 自動縮放預覽 |
+| SEO 補完 | 開放社交標籤 (Open Graph) 與描述最佳化 |
+| 穩定性修復 | 修復 Router 初始化順序導致的啟動崩潰問題 (Critical Fix) |
 
 ---
 
@@ -65,35 +77,36 @@ MentalMath/
 ├── PROJECT_STATUS.md       # 現況文件 (本檔案)
 │
 ├── css/
-│   └── styles.css          # 主樣式表 (1700+ 行)
+├── css/
+│   └── styles.css          # 主樣式表 (2500+ 行)
 │                           # - 玻璃擬態 (Glassmorphism)
 │                           # - CSS Variables 設計系統
-│                           # - 響應式設計
+│                           # - 響應式設計 (Mobile/Tablet/Desktop)
 │                           # - A4 列印樣式
-│                           # - 排行榜樣式
 │
 ├── js/
 │   ├── app.js              # 應用程式入口，路由註冊
 │   │
 │   ├── core/               # 核心模組
-│   │   ├── state.js        # 狀態管理 (含統計、錯題、排行榜)
+│   │   ├── state.js        # 狀態管理
 │   │   ├── router.js       # SPA 路由器
 │   │   ├── audio.js        # 音效管理
 │   │   └── utils.js        # 工具函數
 │   │
 │   ├── components/         # UI 元件
 │   │   ├── abacus.js       # 互動式算盤 (SVG)
-│   │   └── header.js       # 頂部導航列 (含聽算、排行榜)
+│   │   ├── header.js       # 頂部導航列
+│   │   └── bottom-nav.js   # 底部導航列 (Mobile)
 │   │
 │   └── views/              # 頁面視圖
 │       ├── home.js         # 大廳
 │       ├── practice.js     # 練功房
-│       ├── flash.js        # 閃電心算 (增強版)
-│       ├── audio.js        # 聽力訓練 (增強版)
+│       ├── flash.js        # 閃電心算
+│       ├── audio.js        # 聽力訓練
 │       ├── worksheet.js    # 學習單列印
-│       └── leaderboard.js  # 排行榜 (新增)
+│       ├── leaderboard.js  # 排行榜
+│       └── splash.js       # 啟動頁
 │
-
 ```
 
 ---
@@ -103,12 +116,9 @@ MentalMath/
 | 類別 | 技術 |
 |------|------|
 | 前端框架 | 原生 JavaScript (ES Modules) |
-| 樣式 | 自訂 CSS (CSS Variables, Glassmorphism) |
-| 字體 | Inter, JetBrains Mono, Noto Sans TC (Google Fonts) |
-| 音效 | Web Audio API (合成音效) |
-| 語音 | Web Speech Synthesis API |
-| 狀態持久化 | localStorage |
-| 路由 | Hash-based SPA Router |
+| 樣式 | 自訂 CSS (CSS Variables, Glassmorphism, RWD) |
+| 字體 | Inter, JetBrains Mono, Noto Sans TC |
+| PWA | Manifest, Service Worker, Cache API |
 
 ---
 
@@ -118,12 +128,6 @@ MentalMath/
 # 使用任何靜態檔案伺服器
 cd c:\git_work\MentalMath
 npx serve -l 3000
-
-# 或使用 Python
-python -m http.server 3000
-
-# 訪問
-http://localhost:3000
 ```
 
 ---
@@ -133,10 +137,10 @@ http://localhost:3000
 | 類型 | 數量 | 說明 |
 |------|------|------|
 | HTML | 1 | 主入口 |
-| CSS | 1 | 約 1700 行 |
-| JavaScript | 12 | 核心 4 + 元件 2 + 視圖 6 |
+| CSS | 1 | 2500+ 行 |
+| JavaScript | 14 | 核心 4 + 元件 3 + 視圖 7 |
 | Markdown | 2 | README + 現況文件 |
-| **總計** | **16** | |
+| **總計** | **18** | |
 
 ---
 
@@ -152,22 +156,25 @@ http://localhost:3000
 
 ## 🐛 已知問題
 
-1. ~~**算盤珠子超出邊框**~~ - ✅ 已修復 (v1.1.0)
-2. **算盤拖曳** - 目前使用點擊模式，拖曳體驗待優化
-3. **語音合成** - 部分瀏覽器需要使用者互動後才能播放
-4. **舊瀏覽器** - 不支援 ES Modules 的瀏覽器無法使用
+1. **算盤拖曳** - 目前主要優化點擊，拖曳體驗在部分型號手機可能需要微調
+2. **語音合成** - iOS Safari 需在靜音模式關閉下才能聽到聲音
 
 ---
 
 ## 📝 更新日誌
 
+### v1.3.0 (2025-12-19)
+- ✅ 全面響應式設計 (RWD)：適配手機 (375px+)、平板及桌面
+- ✅ 新增底部導航欄 (Mobile Only)：提升手機單手操作體驗
+- ✅ 新增流體字體排版：閃電心算與標題自動隨螢幕縮放
+- ✅ 優化觸控體驗：加入 `touch-action` 與點擊震動回饋
+- ✅ 更新 Service Worker：支援離線快取新元件
+
 ### v1.2.0 (2025-12-17)
-- ✅ 新增排行榜視圖 (個人統計、各模式表現、最佳記錄)
-- ✅ 新增全局統計追蹤系統
+- ✅ 新增排行榜視圖
 - ✅ 新增錯題記錄功能
-- ✅ 導航欄加入聽算和排行榜連結
-- ✅ 閃電心算增強：1-4位數、3-15口數、7種速度、間隔時間控制
-- ✅ 聽力訓練增強：3位數、日語支援、數字間隔、運算模式選擇
+- ✅ 閃電心算增強
+- ✅ 聽力訓練增強
 - ✅ 新增連續正確加分機制
 
 ### v1.1.0 (2025-12-17)
@@ -193,5 +200,5 @@ http://localhost:3000
 
 ---
 
-*本文件最後更新: 2025-12-17*
+*本文件最後更新: 2025-12-25*
 

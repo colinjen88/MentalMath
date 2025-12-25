@@ -9,6 +9,7 @@ import AppState from './core/state.js';
 import Router from './core/router.js';
 import AudioManager from './core/audio.js';
 import { renderHeader, initHeaderEvents } from './components/header.js';
+import { renderBottomNav, initBottomNavEvents } from './components/bottom-nav.js';
 
 // Views
 import HomeView from './views/home.js';
@@ -28,11 +29,14 @@ function initApp() {
     // 初始化音訊 (需要使用者互動才能解鎖)
     document.addEventListener('click', () => AudioManager.init(), { once: true });
     
+    // 初始化主題
+    applyTheme(AppState.get('ui.theme') || 'dark');
+    
+    // 註冊路由 (必須在渲染 Shell 前完成，因為 Header 依賴路由配置)
+    registerRoutes();
+    
     // 渲染基礎結構
     renderAppShell();
-    
-    // 註冊路由
-    registerRoutes();
     
     // 初始化 Header 事件
     initHeaderEvents();
@@ -46,10 +50,14 @@ function initApp() {
     }
     
     // 監聽狀態變更更新 UI
-    AppState.subscribe('user', () => updateHeader());
-    AppState.subscribe('currentView', () => updateHeader());
+    AppState.subscribe('user', () => updateNavigation());
+    AppState.subscribe('currentView', () => updateNavigation());
+    AppState.subscribe('ui.theme', (newTheme) => {
+        applyTheme(newTheme);
+        updateNavigation(); // Re-render header to update icon
+    });
     
-    // PWA 安裝提示監聽
+    // PWA 安裝提示監聯
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         window.deferredPrompt = e;
@@ -72,6 +80,13 @@ function initApp() {
 }
 
 /**
+ * 套用主題至 DOM
+ */
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+}
+
+/**
  * 渲染應用程式外殼
  */
 function renderAppShell() {
@@ -87,18 +102,60 @@ function renderAppShell() {
         <main id="app" class="app-main">
             <!-- 路由內容會渲染在這裡 -->
         </main>
+        ${renderBottomNav()}
     `;
 }
 
 /**
  * 更新 Header
  */
-function updateHeader() {
+/**
+ * 更新導航 (Header & Bottom Nav)
+ */
+function updateNavigation() {
+    // Update Header
     const headerEl = document.querySelector('.app-header');
     if (headerEl) {
         headerEl.outerHTML = renderHeader();
         initHeaderEvents();
     }
+    
+    // Update Bottom Nav
+    const bottomNavEl = document.querySelector('.bottom-nav');
+    if (bottomNavEl) {
+        bottomNavEl.outerHTML = renderBottomNav();
+    } else {
+        // Handle case where bottom nav might not exist yet or was removed (e.g. splash screen)
+        // If it should exist but doesn't, we might need to append it, but usually renderBottomNav returns empty string if hidden.
+        // For simplicity, if it doesn't exist but we are not in hidden mode, we might want to append it?
+        // Actually, renderAppShell created the slot. If renderBottomNav returned empty string previously, the slot is gone?
+        // No, renderAppShell creates the structure once. 
+        // If renderBottomNav returns empty string, it removes the element? No, outerHTML replacement.
+        
+        // If the element doesn't exist (e.g. first load was splash), we might need to re-render structure or append.
+        // But AppShell is static.
+        // Let's check `renderAppShell` logic. It puts `${renderBottomNav()}`.
+        // If that returned empty string, then there is no `.bottom-nav` element in DOM.
+        // So we can't select it to replace it.
+        
+        // Fix: Ensure we have a container or handle re-injection. 
+        // A better approach is to always have a placeholder or re-render shell parts.
+        // Or, simpler: just check if we need to add it.
+        const appRoot = document.getElementById('app-root');
+        if (appRoot && !document.querySelector('.loading-screen')) { // Don't mess if loading
+             const navHTML = renderBottomNav();
+             if (navHTML) {
+                 // Try to find where to insert
+                 // Insert after main if not exists
+                 const main = document.getElementById('app');
+                 if (main) {
+                     main.insertAdjacentHTML('afterend', navHTML);
+                 }
+             }
+        }
+    }
+    
+    initBottomNavEvents();
 }
 
 /**

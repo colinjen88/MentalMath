@@ -86,8 +86,10 @@ export function render() {
             </section>
             
             <!-- A4 學習單預覽 -->
-            <div class="a4-paper" id="worksheet-paper">
-                ${renderWorksheetContent(settings, currentWorksheetData)}
+            <div class="worksheet-preview-container">
+                <div class="a4-paper" id="worksheet-paper">
+                    ${renderWorksheetContent(settings, currentWorksheetData)}
+                </div>
             </div>
         </div>
     `;
@@ -506,6 +508,10 @@ export function onEnter() {
     }
     currentWorksheetData = generateWorksheetData(settings);
     
+    // 初始化縮放
+    setTimeout(applyWorksheetScale, 100);
+    window.addEventListener('resize', applyWorksheetScale);
+    
     // 綁定全域函數
     window.changeWorksheetMode = (mode) => {
         AppState.set('worksheet.mode', mode);
@@ -555,6 +561,8 @@ function refreshWorksheet(keepData = false) {
     const paper = document.getElementById('worksheet-paper');
     if (paper) {
         paper.innerHTML = renderWorksheetContent(settings, currentWorksheetData);
+        // 重新整理後重新計算縮放
+        setTimeout(applyWorksheetScale, 0);
     }
     
     // 更新答案按鈕文字
@@ -580,8 +588,31 @@ function getModeLabel(mode) {
     return labels[mode] || '';
 }
 
+/**
+ * 自動計算並套用學習單縮放 (A4 寬度為 210mm ~ 794px)
+ */
+function applyWorksheetScale() {
+    const paper = document.getElementById('worksheet-paper');
+    const container = document.querySelector('.worksheet-preview-container');
+    if (!paper || !container) return;
+    
+    const containerWidth = container.offsetWidth - 32; // 扣除 padding
+    const paperWidth = 794; // A4 像素寬度 (96 DPI)
+    
+    if (containerWidth < paperWidth) {
+        const scale = containerWidth / paperWidth;
+        paper.style.transform = `scale(${scale})`;
+        paper.style.transformOrigin = 'top center';
+        // 調整容器高度以匹配縮放後的紙張
+        container.style.height = `${paper.offsetHeight * scale + 40}px`;
+    } else {
+        paper.style.transform = 'none';
+        container.style.height = 'auto';
+    }
+}
+
 export function onLeave() {
-    // 清理
+    window.removeEventListener('resize', applyWorksheetScale);
 }
 
 export default {

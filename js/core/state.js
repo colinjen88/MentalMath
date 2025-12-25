@@ -92,7 +92,7 @@ const AppState = (() => {
         
         // UI 狀態
         ui: {
-            theme: 'light',      // 'light' | 'dark' | 'neon'
+            theme: 'dark',       // 'light' | 'dark'
             soundEnabled: true,
             showTutorial: true,
             sidebarOpen: false,

@@ -132,6 +132,20 @@ const Router = (() => {
         init,
         getCurrentRoute,
         back,
+        // Expose routes for header/bottom-nav components to check hideHeader
+        get routes() {
+            return Object.fromEntries(routes);
+        },
+        get currentRoute() {
+            return currentRoute;
+        },
+        /**
+         * Check if current route should hide header
+         */
+        isRouteHidden() {
+            if (!currentRoute || !routes.has(currentRoute)) return false;
+            return !!routes.get(currentRoute).hideHeader;
+        }
     };
 })();
 
